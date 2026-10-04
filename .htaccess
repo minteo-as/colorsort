@@ -1,10 +1,14 @@
 # Cache-regler til webserveren (Apache, fx Simply.com).
 # Filen kommer med i dist/ og dermed i release-zip'en.
 #
-# index.html skal altid tjekkes hos serveren (no-cache), så en ny version
+# index.html og manifestet skal altid tjekkes hos serveren (no-cache), så en ny version
 # slår igennem med det samme i stedet for at browseren viser den gamle.
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+</IfModule>
+
 <IfModule mod_headers.c>
-  <FilesMatch "^index\.html$">
+  <FilesMatch "^(index\.html|manifest\.webmanifest)$">
     Header set Cache-Control "no-cache"
     Header unset Expires
   </FilesMatch>

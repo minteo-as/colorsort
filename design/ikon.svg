@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2e2758"/><stop offset="1" stop-color="#4a2350"/></linearGradient>
+  <clipPath id="midt"><path d="M206 238V416.0A48.0 48.0 0 0 0 302 416.0V238Z"/></clipPath>
+  <clipPath id="hoejre"><path d="M350 238V416.0A48.0 48.0 0 0 0 446 416.0V238Z"/></clipPath>
+  <clipPath id="vippet"><path d="M160 174V338.0A42.0 42.0 0 0 0 244 338.0V174Z" transform="rotate(104 244 174)"/></clipPath>
+</defs>
+<rect width="512" height="512" fill="url(#bg)"/>
+<g>
+  <!-- Vandstråle fra det vippede rør ned i det midterste -->
+  <rect x="245" y="178" width="18" height="190.5" rx="9" fill="#e3812f"/>
+  <!-- Midterste rør: modtager orange -->
+  <path d="M206 238V416.0A48.0 48.0 0 0 0 302 416.0V238Z" fill="rgba(255,255,255,.16)"/>
+  <g clip-path="url(#midt)">
+    <rect x="204" y="413.75" width="100" height="51.25" fill="#e3812f"/>
+    <rect x="204" y="364" width="100" height="51.25" fill="#e3812f"/>
+    <rect x="223" y="254" width="12" height="157" rx="6" fill="#fff" opacity=".35"/>
+  </g>
+  <path d="M206 238V416.0A48.0 48.0 0 0 0 302 416.0V238Z" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <rect x="195" y="229" width="118" height="18" rx="9" fill="#fff"/>
+  <!-- Højre rør: blandede farver -->
+  <path d="M350 238V416.0A48.0 48.0 0 0 0 446 416.0V238Z" fill="rgba(255,255,255,.16)"/>
+  <g clip-path="url(#hoejre)">
+    <rect x="348" y="413.75" width="100" height="51.25" fill="#2c5ee6"/>
+    <rect x="348" y="364" width="100" height="51.25" fill="#f09acb"/>
+    <rect x="348" y="314.25" width="100" height="51.25" fill="#2c5ee6"/>
+    <rect x="348" y="264.5" width="100" height="51.25" fill="#f09acb"/>
+    <rect x="367" y="254" width="12" height="157" rx="6" fill="#fff" opacity=".35"/>
+  </g>
+  <path d="M350 238V416.0A48.0 48.0 0 0 0 446 416.0V238Z" fill="none" stroke="#d9d4f0" stroke-width="10" stroke-linejoin="round"/>
+  <rect x="339" y="229" width="118" height="18" rx="9" fill="#d9d4f0"/>
+  <!-- Venstre rør: løftet og vippet om mundingen; væsken ligger vandret ved mundingen -->
+  <g transform="rotate(104 244 174)"><path d="M160 174V338.0A42.0 42.0 0 0 0 244 338.0V174Z" fill="rgba(255,255,255,.16)"/></g>
+  <g clip-path="url(#vippet)"><rect x="0" y="140" width="512" height="200" fill="#e3812f"/></g>
+  <g transform="rotate(104 244 174)">
+    <path d="M160 174V338.0A42.0 42.0 0 0 0 244 338.0V174Z" fill="none" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+    <rect x="149" y="165" width="106" height="18" rx="9" fill="#fff"/>
+  </g>
+</g>
+</svg>

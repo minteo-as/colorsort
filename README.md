@@ -51,6 +51,17 @@ Derefter:
 
 Fejler noget, før zip-filen er lagt op, sættes releasen tilbage til **kladde** (draft), og fejlen står i workflow-kørslen. Ret fejlen, og udgiv kladden igen (eventuelt med et andet tag).
 
-Zip-filen pakkes ud direkte på webserveren. Den indeholder `index.html` og `.htaccess` (cache-regler til Apache).
+Zip-filen pakkes ud direkte på webserveren. Den indeholder `index.html`, `manifest.webmanifest`, `icons/` og `.htaccess` (cache-regler til Apache).
+
+## Ikon
+
+```
+design/ikon.svg         Ikonet (kilde): det venstre rør hælder ned i det midterste.
+icons/favicon.svg       Forenklet ikon til browserfanen (to rør, tykke streger).
+icons/*.png             Laves ud fra de to SVG'er med: node design/render-icons.mjs
+manifest.webmanifest    Navn og ikoner, når spillet lægges på hjemmeskærmen.
+```
+
+`render-icons.mjs` kræver Playwright med Chromium. Sti til Playwright kan angives med `PLAYWRIGHT=/sti/til/playwright`.
 
 Tags, der pushes fra kommandolinjen, laver ikke en release.
