@@ -2,7 +2,8 @@
 <html lang="da">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Ingen zoom: knibe-zoom og dobbelttryk-zoom slås fra (se også touch-action og gesturestart nedenfor). -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Vandsortering – Vue 3</title>
 <!-- Udfyldes af scripts/build.mjs (fx "0.2.0"). Tom, når index.html åbnes direkte. -->
 <meta name="app-version" content="">
@@ -11,6 +12,9 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-title" content="Vandsortering">
+<!-- Statuslinjen (og browserens værktøjslinje) får samme farve som toppen af siden (--bg). -->
+<meta name="theme-color" content="#e6e9f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1d1934" media="(prefers-color-scheme: dark)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
 <style>
@@ -21,8 +25,7 @@
   --tw: clamp(38px, 11vw, 54px);   /* rørbredde */
   --unit-ms: 200ms;                /* tid pr. portion væske */
   box-sizing: border-box;
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  touch-action: manipulation;      /* intet dobbelttryk-zoom, når man trykker hurtigt på rørene */
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -46,6 +49,17 @@ body {
   overflow-x: hidden;
 }
 #app { max-width: 720px; margin: 0 auto; padding: 16px; min-height: 100%; display: flex; flex-direction: column; }
+/* Fra hjemmeskærmen på iPhone farver Safari statuslinjen ud fra toppen af siden:
+   - Scroller selve siden, slører Safari toppen, når indhold scroller ind under statuslinjen.
+   - Ligger der et fast element ved kanten, får statuslinjen dets farve, når siden indlæses,
+     og følger ikke med bagefter.
+   Derfor scroller selve siden aldrig, #app scroller indeni, og der er intet fast element ved
+   kanten, når siden indlæses. Så følger statuslinjen med siden. Statuslinjen giver selv luft
+   over indholdet. I browseren er intet ændret. */
+@media screen and (display-mode: standalone) {
+  html, body { overflow: hidden; }
+  #app { height: 100%; overflow-y: auto; }
+}
 header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 h1 { font-size: 1.6rem; font-weight: 600; margin: 0; }
 .meta { color: var(--muted); font-size: .95rem; }
@@ -328,6 +342,11 @@ const Sound = (() => {
 /* ---------- Vue 3 ---------- */
 const { createApp, ref, computed, watch } = Vue;
 const APP_VERSION = document.querySelector('meta[name="app-version"]').content;
+
+// Safari på iPhone ignorerer user-scalable=no, så knibe-zoom stoppes her.
+for (const type of ['gesturestart', 'gesturechange']) {
+  document.addEventListener(type, e => e.preventDefault(), { passive: false });
+}
 
 createApp({
   setup() {
