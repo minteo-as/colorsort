@@ -6,7 +6,16 @@ Et vandsorteringsspil i browseren, bygget med Vue 3. Hæld farverne mellem røre
 
 Åbn `index.html` i en browser. Der er intet build-step: Vue 3 hentes fra cdnjs og skrifttypen fra Google Fonts.
 
-`npm run build` samler filerne til webserveren i `dist/` og skriver versionsnummeret ind i `index.html`. `npm test` kører testene. Begge kræver kun Node 22 – der er ingen afhængigheder at installere.
+Til udvikling (Node 22):
+
+```bash
+npm install
+npm test               # tests
+npm run build          # filerne til webserveren i dist/, med versionsnummeret skrevet ind i index.html
+npm run format         # formatér koden med Prettier (CI tjekker med npm run format:check)
+```
+
+Den eneste afhængighed er Prettier. Spillet selv har intet build-step.
 
 ## Opbygning
 
@@ -68,4 +77,4 @@ Tags, der pushes fra kommandolinjen, laver ikke en release.
 
 ## CI
 
-`.github/workflows/ci.yml` kører ved hver push til `main` og ved hver pull request: testene og `npm run build`. Den byggede `dist/` gemmes som en zip-fil på workflow-kørslen i 30 dage (`colorsort-dist-<commit>`), så man kan hente og afprøve en bestemt version uden at lave en release.
+`.github/workflows/ci.yml` kører ved hver push til `main` og ved hver pull request: den tjekker formateringen (Prettier), kører testene og `npm run build`. Den byggede `dist/` gemmes som en zip-fil på workflow-kørslen i 30 dage (`colorsort-dist-<commit>`), så man kan hente og afprøve en bestemt version uden at lave en release.

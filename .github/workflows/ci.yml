@@ -26,6 +26,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+
+      - name: Installer
+        run: npm ci
+
+      - name: Formatering
+        run: npm run format:check || { echo "::error::Koden er ikke formateret. Kør 'npm run format' og commit resultatet."; exit 1; }
 
       - name: Tests
         run: npm test
