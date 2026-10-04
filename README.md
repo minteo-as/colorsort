@@ -65,3 +65,7 @@ manifest.webmanifest    Navn og ikoner, når spillet lægges på hjemmeskærmen.
 `render-icons.mjs` kræver Playwright med Chromium. Sti til Playwright kan angives med `PLAYWRIGHT=/sti/til/playwright`.
 
 Tags, der pushes fra kommandolinjen, laver ikke en release.
+
+## CI
+
+`.github/workflows/ci.yml` kører ved hver push til `main` og ved hver pull request: testene og `npm run build`. Den byggede `dist/` gemmes som en zip-fil på workflow-kørslen i 30 dage (`colorsort-dist-<commit>`), så man kan hente og afprøve en bestemt version uden at lave en release.
