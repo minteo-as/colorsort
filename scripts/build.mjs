@@ -39,17 +39,18 @@ function appVersion() {
   return commit ? `${version}+${commit}` : version
 }
 
-const placeholder = '<meta name="app-version" content="">'
+// Med eller uden " />" til sidst (Prettier skriver " />").
+const placeholder = /<meta name="app-version" content="" ?\/?>/
 const html = readFileSync(`${root}index.html`, 'utf8')
-if (!html.includes(placeholder)) {
-  console.error(`index.html mangler ${placeholder}`)
+if (!placeholder.test(html)) {
+  console.error('index.html mangler <meta name="app-version" content="" />')
   process.exit(1)
 }
 
 const version = appVersion()
 rmSync(dist, { recursive: true, force: true })
 mkdirSync(dist)
-writeFileSync(`${dist}index.html`, html.replace(placeholder, `<meta name="app-version" content="${version}">`))
+writeFileSync(`${dist}index.html`, html.replace(placeholder, `<meta name="app-version" content="${version}" />`))
 for (const file of FILES) {
   if (!existsSync(`${root}${file}`)) {
     console.error(`${file} mangler`)
