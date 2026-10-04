@@ -1,518 +1,827 @@
 <!doctype html>
 <html lang="da">
-<head>
-<meta charset="utf-8">
-<!-- Ingen zoom: knibe-zoom og dobbelttryk-zoom slås fra (se også touch-action og gesturestart nedenfor). -->
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Vandsortering – Vue 3</title>
-<!-- Udfyldes af scripts/build.mjs (fx "0.2.0"). Tom, når index.html åbnes direkte. -->
-<meta name="app-version" content="">
-<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
-<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="apple-mobile-web-app-title" content="Vandsortering">
-<!-- Statuslinjen (og browserens værktøjslinje) får samme farve som toppen af siden (--bg). -->
-<meta name="theme-color" content="#e6e9f2" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#1d1934" media="(prefers-color-scheme: dark)">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg: #e6e9f2; --bg2: #cfd5e6; --ink: #24203f; --muted: #5d5a78;
-  --glass: rgba(255,255,255,.55); --rim: #8c90a8; --btn: #ffffff; --btn-ink: #24203f;
-  --accent: #6b4fd8; --hint: #f2b134;
-  --tw: clamp(38px, 11vw, 54px);   /* rørbredde */
-  --unit-ms: 200ms;                /* tid pr. portion væske */
-  box-sizing: border-box;
-  touch-action: manipulation;      /* intet dobbelttryk-zoom, når man trykker hurtigt på rørene */
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #1d1934; --bg2: #3a1f3f; --ink: #efeaff; --muted: #a59fc6;
-    --glass: rgba(255,255,255,.06); --rim: #b3b0c4; --btn: #2e2952; --btn-ink: #efeaff;
-    --accent: #a48cff;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #1d1934; --bg2: #3a1f3f; --ink: #efeaff; --muted: #a59fc6;
-  --glass: rgba(255,255,255,.06); --rim: #b3b0c4; --btn: #2e2952; --btn-ink: #efeaff;
-  --accent: #a48cff;
-}
-*, *::before, *::after { box-sizing: inherit; }
-html, body { height: 100%; margin: 0; }
-body {
-  background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%) fixed;
-  color: var(--ink);
-  font-family: "Fredoka", "Nunito", "Segoe UI", system-ui, sans-serif;
-  -webkit-tap-highlight-color: transparent;
-  overflow-x: hidden;
-}
-#app { max-width: 720px; margin: 0 auto; padding: 16px; min-height: 100%; display: flex; flex-direction: column; }
-/* Fra hjemmeskærmen på iPhone farver Safari statuslinjen ud fra toppen af siden:
+  <head>
+    <meta charset="utf-8" />
+    <!-- Ingen zoom: knibe-zoom og dobbelttryk-zoom slås fra (se også touch-action og gesturestart nedenfor). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Vandsortering – Vue 3</title>
+    <!-- Udfyldes af scripts/build.mjs (fx "0.2.0"). Tom, når index.html åbnes direkte. -->
+    <meta name="app-version" content="" />
+    <link rel="icon" href="icons/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="Vandsortering" />
+    <!-- Statuslinjen (og browserens værktøjslinje) får samme farve som toppen af siden (--bg). -->
+    <meta name="theme-color" content="#e6e9f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1d1934" media="(prefers-color-scheme: dark)" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #e6e9f2;
+        --bg2: #cfd5e6;
+        --ink: #24203f;
+        --muted: #5d5a78;
+        --glass: rgba(255, 255, 255, 0.55);
+        --rim: #8c90a8;
+        --btn: #ffffff;
+        --btn-ink: #24203f;
+        --accent: #6b4fd8;
+        --hint: #f2b134;
+        --tw: clamp(38px, 11vw, 54px); /* rørbredde */
+        --unit-ms: 200ms; /* tid pr. portion væske */
+        box-sizing: border-box;
+        touch-action: manipulation; /* intet dobbelttryk-zoom, når man trykker hurtigt på rørene */
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --bg: #1d1934;
+          --bg2: #3a1f3f;
+          --ink: #efeaff;
+          --muted: #a59fc6;
+          --glass: rgba(255, 255, 255, 0.06);
+          --rim: #b3b0c4;
+          --btn: #2e2952;
+          --btn-ink: #efeaff;
+          --accent: #a48cff;
+        }
+      }
+      :root[data-theme='dark'] {
+        --bg: #1d1934;
+        --bg2: #3a1f3f;
+        --ink: #efeaff;
+        --muted: #a59fc6;
+        --glass: rgba(255, 255, 255, 0.06);
+        --rim: #b3b0c4;
+        --btn: #2e2952;
+        --btn-ink: #efeaff;
+        --accent: #a48cff;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: inherit;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%) fixed;
+        color: var(--ink);
+        font-family: 'Fredoka', 'Nunito', 'Segoe UI', system-ui, sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        overflow-x: hidden;
+      }
+      #app {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 16px;
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      /* Fra hjemmeskærmen på iPhone farver Safari statuslinjen ud fra toppen af siden:
    - Scroller selve siden, slører Safari toppen, når indhold scroller ind under statuslinjen.
    - Ligger der et fast element ved kanten, får statuslinjen dets farve, når siden indlæses,
      og følger ikke med bagefter.
    Derfor scroller selve siden aldrig, #app scroller indeni, og der er intet fast element ved
    kanten, når siden indlæses. Så følger statuslinjen med siden. Statuslinjen giver selv luft
    over indholdet. I browseren er intet ændret. */
-@media screen and (display-mode: standalone) {
-  html, body { overflow: hidden; }
-  #app { height: 100%; overflow-y: auto; }
-}
-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-h1 { font-size: 1.6rem; font-weight: 600; margin: 0; }
-.meta { color: var(--muted); font-size: .95rem; }
-.settings { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--muted); }
-select { font: inherit; color: var(--btn-ink); background: var(--btn); border: 1px solid var(--rim); border-radius: 8px; padding: 4px 8px; }
+      @media screen and (display-mode: standalone) {
+        html,
+        body {
+          overflow: hidden;
+        }
+        #app {
+          height: 100%;
+          overflow-y: auto;
+        }
+      }
+      header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      h1 {
+        font-size: 1.6rem;
+        font-weight: 600;
+        margin: 0;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      .settings {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+        color: var(--muted);
+      }
+      select {
+        font: inherit;
+        color: var(--btn-ink);
+        background: var(--btn);
+        border: 1px solid var(--rim);
+        border-radius: 8px;
+        padding: 4px 8px;
+      }
 
-.board {
-  position: relative;  /* reference for offsetLeft/offsetTop og vandstrålen */
-  flex: 1; display: flex; flex-wrap: wrap; justify-content: center; align-content: center;
-  gap: 34px 14px; padding: 60px 0 24px;
-}
-.tube {
-  width: var(--tw); height: calc(var(--tw) * 3.7); position: relative; cursor: pointer;
-  border: 3px solid var(--rim); border-top: none; border-radius: 0 0 calc(var(--tw) / 2) calc(var(--tw) / 2);
-  background: var(--glass); overflow: hidden;
-  transform-origin: 50% 0;           /* der drejes om mundingen */
-  transition: transform .18s ease;
-}
-.tube::before { /* glans */
-  content: ""; position: absolute; left: 18%; top: 14px; bottom: 18px; width: 9%;
-  border-radius: 3px; background: rgba(255,255,255,.28); z-index: 2; pointer-events: none;
-}
-.tube::after { /* kant */
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px;
-  background: var(--rim); z-index: 3;
-}
-.liquid {
-  position: absolute; left: 0; right: 0; top: 18px; bottom: 0;
-  display: flex; flex-direction: column-reverse;
-}
-.seg { height: 25%; flex: 0 0 auto; }
-/* Vue <transition-group>: portioner vokser ind og drænes ud */
-.liq-enter-active, .liq-leave-active { transition: height var(--unit-ms) linear; }
-.liq-enter-from, .liq-leave-to { height: 0; }
+      .board {
+        position: relative; /* reference for offsetLeft/offsetTop og vandstrålen */
+        flex: 1;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-content: center;
+        gap: 34px 14px;
+        padding: 60px 0 24px;
+      }
+      .tube {
+        width: var(--tw);
+        height: calc(var(--tw) * 3.7);
+        position: relative;
+        cursor: pointer;
+        border: 3px solid var(--rim);
+        border-top: none;
+        border-radius: 0 0 calc(var(--tw) / 2) calc(var(--tw) / 2);
+        background: var(--glass);
+        overflow: hidden;
+        transform-origin: 50% 0; /* der drejes om mundingen */
+        transition: transform 0.18s ease;
+      }
+      .tube::before {
+        /* glans */
+        content: '';
+        position: absolute;
+        left: 18%;
+        top: 14px;
+        bottom: 18px;
+        width: 9%;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.28);
+        z-index: 2;
+        pointer-events: none;
+      }
+      .tube::after {
+        /* kant */
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 4px;
+        background: var(--rim);
+        z-index: 3;
+      }
+      .liquid {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 18px;
+        bottom: 0;
+        display: flex;
+        flex-direction: column-reverse;
+      }
+      .seg {
+        height: 25%;
+        flex: 0 0 auto;
+      }
+      /* Vue <transition-group>: portioner vokser ind og drænes ud */
+      .liq-enter-active,
+      .liq-leave-active {
+        transition: height var(--unit-ms) linear;
+      }
+      .liq-enter-from,
+      .liq-leave-to {
+        height: 0;
+      }
 
-.tube:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
-.tube.selected { transform: translateY(-22px); }
-.tube.hint-from, .tube.hint-to { box-shadow: 0 0 0 4px var(--hint); }
-.tube.shake { animation: shake .3s; }
-.tube.done { border-color: var(--accent); }
-@keyframes shake { 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+      .tube:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 4px;
+      }
+      .tube.selected {
+        transform: translateY(-22px);
+      }
+      .tube.hint-from,
+      .tube.hint-to {
+        box-shadow: 0 0 0 4px var(--hint);
+      }
+      .tube.shake {
+        animation: shake 0.3s;
+      }
+      .tube.done {
+        border-color: var(--accent);
+      }
+      @keyframes shake {
+        25% {
+          transform: translateX(-5px);
+        }
+        75% {
+          transform: translateX(5px);
+        }
+      }
 
-.stream {
-  position: absolute; width: 6px; border-radius: 3px; z-index: 4; pointer-events: none;
-  transform-origin: top; animation: streamIn .12s ease-out;
-}
-@keyframes streamIn { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+      .stream {
+        position: absolute;
+        width: 6px;
+        border-radius: 3px;
+        z-index: 4;
+        pointer-events: none;
+        transform-origin: top;
+        animation: streamIn 0.12s ease-out;
+      }
+      @keyframes streamIn {
+        from {
+          transform: scaleY(0);
+        }
+        to {
+          transform: scaleY(1);
+        }
+      }
 
-.bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding-bottom: 8px; }
-button {
-  font: inherit; font-weight: 600; color: var(--btn-ink); background: var(--btn);
-  border: 2px solid var(--rim); border-radius: 12px; padding: 10px 14px; cursor: pointer;
-}
-button:disabled { opacity: .4; cursor: default; }
-button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.msg { text-align: center; min-height: 1.5em; color: var(--muted); margin: 4px 0 10px; }
-.win { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(20,16,40,.6); z-index: 10; }
-.win div { background: var(--btn); color: var(--btn-ink); padding: 28px 32px; border-radius: 20px; text-align: center; }
-.win h2 { margin: 0 0 6px; font-size: 1.8rem; }
-.version { text-align: center; color: var(--muted); font-size: .8rem; margin: 4px 0 0; }
-@media (prefers-reduced-motion: reduce) { .tube { transition: none; } .tube.shake, .stream { animation: none; } }
-</style>
-</head>
-<body>
-<div id="app">
-  <header>
-    <h1>Bane {{ level }}</h1>
-    <span class="meta">{{ moves }} træk</span>
-  </header>
-  <div class="settings">
-    <label>Antal farver
-      <select v-model.number="numColors" @change="newGame" :disabled="pending > 0">
-        <option v-for="n in [3,4,5,6,7,8,9,10]" :key="n" :value="n">{{ n }}</option>
-      </select>
-    </label>
-    <button @click="toggleSound">{{ muted ? 'Slå lyd til' : 'Slå lyd fra' }}</button>
-  </div>
+      .bar {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        padding-bottom: 8px;
+      }
+      button {
+        font: inherit;
+        font-weight: 600;
+        color: var(--btn-ink);
+        background: var(--btn);
+        border: 2px solid var(--rim);
+        border-radius: 12px;
+        padding: 10px 14px;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      button:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .msg {
+        text-align: center;
+        min-height: 1.5em;
+        color: var(--muted);
+        margin: 4px 0 10px;
+      }
+      .win {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: rgba(20, 16, 40, 0.6);
+        z-index: 10;
+      }
+      .win div {
+        background: var(--btn);
+        color: var(--btn-ink);
+        padding: 28px 32px;
+        border-radius: 20px;
+        text-align: center;
+      }
+      .win h2 {
+        margin: 0 0 6px;
+        font-size: 1.8rem;
+      }
+      .version {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.8rem;
+        margin: 4px 0 0;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .tube {
+          transition: none;
+        }
+        .tube.shake,
+        .stream {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>Bane {{ level }}</h1>
+        <span class="meta">{{ moves }} træk</span>
+      </header>
+      <div class="settings">
+        <label
+          >Antal farver
+          <select v-model.number="numColors" @change="newGame" :disabled="pending > 0">
+            <option v-for="n in [3,4,5,6,7,8,9,10]" :key="n" :value="n">{{ n }}</option>
+          </select>
+        </label>
+        <button @click="toggleSound">{{ muted ? 'Slå lyd til' : 'Slå lyd fra' }}</button>
+      </div>
 
-  <div class="board">
-    <div v-for="(tube, i) in tubes" :key="i"
-         :ref="el => { if (el) tubeEls[i] = el }"
-         class="tube" tabindex="0" role="button" :aria-label="'Rør ' + (i+1)"
-         :class="{ selected: selected === i, shake: shaking === i,
+      <div class="board">
+        <div
+          v-for="(tube, i) in tubes"
+          :key="i"
+          :ref="el => { if (el) tubeEls[i] = el }"
+          class="tube"
+          tabindex="0"
+          role="button"
+          :aria-label="'Rør ' + (i+1)"
+          :class="{ selected: selected === i, shake: shaking === i,
                    'hint-from': hint && hint[0] === i, 'hint-to': hint && hint[1] === i,
                    done: isTubeDone(tube) }"
-         :style="tilts[i] || null"
-         @click="tap(i)" @keydown.enter.space.prevent="tap(i)">
-      <transition-group name="liq" tag="div" class="liquid">
-        <div v-for="(c, j) in tube" :key="j" class="seg" :style="{ background: PALETTE[c] }"></div>
-      </transition-group>
+          :style="tilts[i] || null"
+          @click="tap(i)"
+          @keydown.enter.space.prevent="tap(i)"
+        >
+          <transition-group name="liq" tag="div" class="liquid">
+            <div v-for="(c, j) in tube" :key="j" class="seg" :style="{ background: PALETTE[c] }"></div>
+          </transition-group>
+        </div>
+        <div v-for="s in streams" :key="s.id" class="stream" :style="s.style"></div>
+      </div>
+
+      <p class="msg">{{ message }}</p>
+
+      <div class="bar">
+        <button @click="undo" :disabled="pending > 0 || !history.length">Fortryd</button>
+        <button @click="restart" :disabled="pending > 0">Start forfra</button>
+        <button @click="addTube" :disabled="extraTubeUsed">Ekstra rør</button>
+        <button @click="showHint">Tip</button>
+        <button @click="newGame" :disabled="pending > 0">Ny bane</button>
+      </div>
+
+      <p class="version" v-if="version">Version {{ version }}</p>
+
+      <div class="win" v-if="won" @click="nextLevel">
+        <div>
+          <h2>Løst!</h2>
+          <p>{{ moves }} træk. Tryk for næste bane.</p>
+        </div>
+      </div>
     </div>
-    <div v-for="s in streams" :key="s.id" class="stream" :style="s.style"></div>
-  </div>
 
-  <p class="msg">{{ message }}</p>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
+    <script>
+      /* ---------- Spillogik (ren JS, uafhængig af Vue) ---------- */
+      const CAP = 4
+      const PALETTE = [
+        '#e3812f',
+        '#f09acb',
+        '#2c5ee6',
+        '#86993a',
+        '#b046bf',
+        '#327f63',
+        '#ad2f58',
+        '#eac746',
+        '#8fa8f8',
+        '#6c7290',
+        '#bcd67a',
+        '#3f4180',
+      ]
 
-  <div class="bar">
-    <button @click="undo" :disabled="pending > 0 || !history.length">Fortryd</button>
-    <button @click="restart" :disabled="pending > 0">Start forfra</button>
-    <button @click="addTube" :disabled="extraTubeUsed">Ekstra rør</button>
-    <button @click="showHint">Tip</button>
-    <button @click="newGame" :disabled="pending > 0">Ny bane</button>
-  </div>
+      const peek = (t) => t[t.length - 1]
+      function topRun(t) {
+        let n = 0
+        for (let i = t.length - 1; i >= 0 && t[i] === peek(t); i--) n++
+        return n
+      }
+      function canPour(ts, a, b) {
+        if (a === b) return false
+        const s = ts[a],
+          d = ts[b]
+        if (!s.length || d.length >= CAP) return false
+        return !d.length || peek(d) === peek(s)
+      }
+      function pour(ts, a, b) {
+        const n = Math.min(topRun(ts[a]), CAP - ts[b].length)
+        for (let i = 0; i < n; i++) ts[b].push(ts[a].pop())
+        return n
+      }
+      const isTubeDone = (t) => t.length === CAP && t.every((c) => c === t[0])
+      const isSolved = (ts) => ts.every((t) => t.length === 0 || isTubeDone(t))
 
-  <p class="version" v-if="version">Version {{ version }}</p>
-
-  <div class="win" v-if="won" @click="nextLevel">
-    <div>
-      <h2>Løst!</h2>
-      <p>{{ moves }} træk. Tryk for næste bane.</p>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
-<script>
-/* ---------- Spillogik (ren JS, uafhængig af Vue) ---------- */
-const CAP = 4;
-const PALETTE = ['#e3812f','#f09acb','#2c5ee6','#86993a','#b046bf','#327f63',
-                 '#ad2f58','#eac746','#8fa8f8','#6c7290','#bcd67a','#3f4180'];
-
-const peek = t => t[t.length - 1];
-function topRun(t) {
-  let n = 0;
-  for (let i = t.length - 1; i >= 0 && t[i] === peek(t); i--) n++;
-  return n;
-}
-function canPour(ts, a, b) {
-  if (a === b) return false;
-  const s = ts[a], d = ts[b];
-  if (!s.length || d.length >= CAP) return false;
-  return !d.length || peek(d) === peek(s);
-}
-function pour(ts, a, b) {
-  const n = Math.min(topRun(ts[a]), CAP - ts[b].length);
-  for (let i = 0; i < n; i++) ts[b].push(ts[a].pop());
-  return n;
-}
-const isTubeDone = t => t.length === CAP && t.every(c => c === t[0]);
-const isSolved = ts => ts.every(t => t.length === 0 || isTubeDone(t));
-
-function solve(start, limit = 200000) {
-  const seen = new Set(); const path = []; let nodes = 0;
-  const key = ts => ts.map(t => t.join(',')).sort().join('|');
-  function dfs(ts) {
-    if (isSolved(ts)) return true;
-    if (++nodes > limit) return null;
-    const k = key(ts);
-    if (seen.has(k)) return false;
-    seen.add(k);
-    for (let a = 0; a < ts.length; a++) {
-      const s = ts[a];
-      if (!s.length || isTubeDone(s)) continue;
-      let triedEmpty = false;
-      for (let b = 0; b < ts.length; b++) {
-        if (!canPour(ts, a, b)) continue;
-        if (!ts[b].length) {
-          if (triedEmpty || topRun(s) === s.length) continue;
-          triedEmpty = true;
+      function solve(start, limit = 200000) {
+        const seen = new Set()
+        const path = []
+        let nodes = 0
+        const key = (ts) =>
+          ts
+            .map((t) => t.join(','))
+            .sort()
+            .join('|')
+        function dfs(ts) {
+          if (isSolved(ts)) return true
+          if (++nodes > limit) return null
+          const k = key(ts)
+          if (seen.has(k)) return false
+          seen.add(k)
+          for (let a = 0; a < ts.length; a++) {
+            const s = ts[a]
+            if (!s.length || isTubeDone(s)) continue
+            let triedEmpty = false
+            for (let b = 0; b < ts.length; b++) {
+              if (!canPour(ts, a, b)) continue
+              if (!ts[b].length) {
+                if (triedEmpty || topRun(s) === s.length) continue
+                triedEmpty = true
+              }
+              const next = ts.map((t) => t.slice())
+              pour(next, a, b)
+              path.push([a, b])
+              const r = dfs(next)
+              if (r) return true
+              if (r === null) return null
+              path.pop()
+            }
+          }
+          return false
         }
-        const next = ts.map(t => t.slice());
-        pour(next, a, b);
-        path.push([a, b]);
-        const r = dfs(next);
-        if (r) return true;
-        if (r === null) return null;
-        path.pop();
+        const r = dfs(start.map((t) => t.slice()))
+        return r ? path.slice() : r
       }
-    }
-    return false;
-  }
-  const r = dfs(start.map(t => t.slice()));
-  return r ? path.slice() : r;
-}
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-function generate(colors, empties = 2) {
-  let tubes;
-  for (let attempt = 0; attempt < 40; attempt++) {
-    const units = shuffle([...Array(colors * CAP)].map((_, i) => i % colors));
-    tubes = [];
-    for (let i = 0; i < colors; i++) tubes.push(units.slice(i * CAP, i * CAP + CAP));
-    for (let i = 0; i < empties; i++) tubes.push([]);
-    if (tubes.some(isTubeDone)) continue;
-    if (solve(tubes, 60000)) return tubes;
-  }
-  return tubes;
-}
-const clone = ts => ts.map(t => t.slice());
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-/* ---------- Lyd: syntetiseret med Web Audio API, ingen lydfiler ---------- */
-const Sound = (() => {
-  let ctx = null, muted = false;
-  function get() {
-    if (muted) return null;
-    if (!ctx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return null;
-      ctx = new AC();                       // skal oprettes efter en brugerhandling
-    }
-    if (ctx.state === 'suspended') ctx.resume();
-    return ctx;
-  }
-  function tone(c, freq, t, dur, vol, type = 'sine') {
-    const o = c.createOscillator(), g = c.createGain();
-    o.type = type; o.frequency.setValueAtTime(freq, t);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol, t + 0.004);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g).connect(c.destination);
-    o.start(t); o.stop(t + dur + 0.02);
-    return o;
-  }
-  // En boble lyder som en kort sinustone hvis tonehøjde stiger (Minnaert-resonans).
-  function bubble(c, t, f) {
-    const o = tone(c, f, t, 0.07, 0.12);
-    o.frequency.exponentialRampToValueAtTime(f * 1.7, t + 0.06);
-  }
-  return {
-    setMuted(m) { muted = m; },
-    clink() {                              // glas der rører hinanden
-      const c = get(); if (!c) return;
-      const t = c.currentTime;
-      tone(c, 1800, t, 0.14, 0.015); tone(c, 2900, t, 0.09, 0.005);
-    },
-    thud() {                               // ugyldigt træk
-      const c = get(); if (!c) return;
-      tone(c, 140, c.currentTime, 0.15, 0.15, 'triangle');
-    },
-    // Hældelyd: brun støj gennem et båndpasfilter. Filterets frekvens stiger,
-    // fordi luftsøjlen over væsken bliver kortere, efterhånden som røret fyldes.
-    pour(ms, fromLevel, toLevel) {
-      const c = get(); if (!c) return;
-      const t = c.currentTime, d = ms / 1000;
-      const len = Math.ceil(c.sampleRate * d);
-      const buf = c.createBuffer(1, len, c.sampleRate), data = buf.getChannelData(0);
-      let last = 0;
-      for (let i = 0; i < len; i++) {
-        last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
-        data[i] = last * 3.5;
+      function shuffle(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          ;[arr[i], arr[j]] = [arr[j], arr[i]]
+        }
+        return arr
       }
-      const src = c.createBufferSource(); src.buffer = buf;
-      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 5;
-      const f0 = 300 + fromLevel * 1000, f1 = 300 + toLevel * 1000;
-      bp.frequency.setValueAtTime(f0, t);
-      bp.frequency.linearRampToValueAtTime(f1, t + d);
-      const g = c.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.linearRampToValueAtTime(0.6, t + 0.05);
-      g.gain.setValueAtTime(0.6, t + Math.max(0.06, d - 0.08));
-      g.gain.linearRampToValueAtTime(0.0001, t + d);
-      src.connect(bp).connect(g).connect(c.destination);
-      src.start(t); src.stop(t + d);
-      const n = Math.round(d * 16);
-      for (let i = 0; i < n; i++) {
-        const bt = t + Math.random() * d * 0.95;
-        const f = (f0 + (f1 - f0) * ((bt - t) / d)) * (0.9 + Math.random() * 0.6);
-        bubble(c, bt, f);
+      function generate(colors, empties = 2) {
+        let tubes
+        for (let attempt = 0; attempt < 40; attempt++) {
+          const units = shuffle([...Array(colors * CAP)].map((_, i) => i % colors))
+          tubes = []
+          for (let i = 0; i < colors; i++) tubes.push(units.slice(i * CAP, i * CAP + CAP))
+          for (let i = 0; i < empties; i++) tubes.push([])
+          if (tubes.some(isTubeDone)) continue
+          if (solve(tubes, 60000)) return tubes
+        }
+        return tubes
       }
-    },
-    chime() {                              // et rør er færdigt
-      const c = get(); if (!c) return;
-      const t = c.currentTime;
-      tone(c, 1320, t, 0.4, 0.06); tone(c, 1760, t + 0.08, 0.5, 0.05);
-    },
-    fanfare() {
-      const c = get(); if (!c) return;
-      const t = c.currentTime;
-      [523, 659, 784, 1047].forEach((f, k) => tone(c, f, t + k * 0.11, 0.45, 0.08, 'triangle'));
-    }
-  };
-})();
+      const clone = (ts) => ts.map((t) => t.slice())
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-/* ---------- Vue 3 ---------- */
-const { createApp, ref, computed, watch } = Vue;
-const APP_VERSION = document.querySelector('meta[name="app-version"]').content;
+      /* ---------- Lyd: syntetiseret med Web Audio API, ingen lydfiler ---------- */
+      const Sound = (() => {
+        let ctx = null,
+          muted = false
+        function get() {
+          if (muted) return null
+          if (!ctx) {
+            const AC = window.AudioContext || window.webkitAudioContext
+            if (!AC) return null
+            ctx = new AC() // skal oprettes efter en brugerhandling
+          }
+          if (ctx.state === 'suspended') ctx.resume()
+          return ctx
+        }
+        function tone(c, freq, t, dur, vol, type = 'sine') {
+          const o = c.createOscillator(),
+            g = c.createGain()
+          o.type = type
+          o.frequency.setValueAtTime(freq, t)
+          g.gain.setValueAtTime(0.0001, t)
+          g.gain.exponentialRampToValueAtTime(vol, t + 0.004)
+          g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+          o.connect(g).connect(c.destination)
+          o.start(t)
+          o.stop(t + dur + 0.02)
+          return o
+        }
+        // En boble lyder som en kort sinustone hvis tonehøjde stiger (Minnaert-resonans).
+        function bubble(c, t, f) {
+          const o = tone(c, f, t, 0.07, 0.12)
+          o.frequency.exponentialRampToValueAtTime(f * 1.7, t + 0.06)
+        }
+        return {
+          setMuted(m) {
+            muted = m
+          },
+          clink() {
+            // glas der rører hinanden
+            const c = get()
+            if (!c) return
+            const t = c.currentTime
+            tone(c, 1800, t, 0.14, 0.015)
+            tone(c, 2900, t, 0.09, 0.005)
+          },
+          thud() {
+            // ugyldigt træk
+            const c = get()
+            if (!c) return
+            tone(c, 140, c.currentTime, 0.15, 0.15, 'triangle')
+          },
+          // Hældelyd: brun støj gennem et båndpasfilter. Filterets frekvens stiger,
+          // fordi luftsøjlen over væsken bliver kortere, efterhånden som røret fyldes.
+          pour(ms, fromLevel, toLevel) {
+            const c = get()
+            if (!c) return
+            const t = c.currentTime,
+              d = ms / 1000
+            const len = Math.ceil(c.sampleRate * d)
+            const buf = c.createBuffer(1, len, c.sampleRate),
+              data = buf.getChannelData(0)
+            let last = 0
+            for (let i = 0; i < len; i++) {
+              last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02
+              data[i] = last * 3.5
+            }
+            const src = c.createBufferSource()
+            src.buffer = buf
+            const bp = c.createBiquadFilter()
+            bp.type = 'bandpass'
+            bp.Q.value = 5
+            const f0 = 300 + fromLevel * 1000,
+              f1 = 300 + toLevel * 1000
+            bp.frequency.setValueAtTime(f0, t)
+            bp.frequency.linearRampToValueAtTime(f1, t + d)
+            const g = c.createGain()
+            g.gain.setValueAtTime(0.0001, t)
+            g.gain.linearRampToValueAtTime(0.6, t + 0.05)
+            g.gain.setValueAtTime(0.6, t + Math.max(0.06, d - 0.08))
+            g.gain.linearRampToValueAtTime(0.0001, t + d)
+            src.connect(bp).connect(g).connect(c.destination)
+            src.start(t)
+            src.stop(t + d)
+            const n = Math.round(d * 16)
+            for (let i = 0; i < n; i++) {
+              const bt = t + Math.random() * d * 0.95
+              const f = (f0 + (f1 - f0) * ((bt - t) / d)) * (0.9 + Math.random() * 0.6)
+              bubble(c, bt, f)
+            }
+          },
+          chime() {
+            // et rør er færdigt
+            const c = get()
+            if (!c) return
+            const t = c.currentTime
+            tone(c, 1320, t, 0.4, 0.06)
+            tone(c, 1760, t + 0.08, 0.5, 0.05)
+          },
+          fanfare() {
+            const c = get()
+            if (!c) return
+            const t = c.currentTime
+            ;[523, 659, 784, 1047].forEach((f, k) => tone(c, f, t + k * 0.11, 0.45, 0.08, 'triangle'))
+          },
+        }
+      })()
 
-// Safari på iPhone ignorerer user-scalable=no, så knibe-zoom stoppes her.
-for (const type of ['gesturestart', 'gesturechange']) {
-  document.addEventListener(type, e => e.preventDefault(), { passive: false });
-}
+      /* ---------- Vue 3 ---------- */
+      const { createApp, ref, computed, watch } = Vue
+      const APP_VERSION = document.querySelector('meta[name="app-version"]').content
 
-createApp({
-  setup() {
-    const level = ref(1);
-    const numColors = ref(4);
-    // To lag af tilstand:
-    //  state: den logiske bane. Opdateres øjeblikkeligt, når et træk accepteres.
-    //  tubes: det, der vises. Animationerne flytter portionerne her, lidt efter lidt.
-    const state = ref([]);
-    const tubes = ref([]);
-    const initial = ref([]);
-    const history = ref([]);          // snapshots af state, ikke af det viste
-    const selected = ref(null);
-    const shaking = ref(null);
-    const hint = ref(null);
-    const moves = ref(0);
-    const message = ref('');
-    const extraTubeUsed = ref(false);
-    const pending = ref(0);           // antal hældninger, der endnu ikke er animeret færdig
-    const tilts = ref({});            // rør-indeks -> inline-stil for vippede rør
-    const streams = ref([]);          // aktive vandstråler
-    const muted = ref(false);
-    const tubeEls = [];
-    // Kø pr. rør. At hælde UD kræver eneret over røret; at MODTAGE kan ske
-    // samtidig fra flere rør (de hælder altid samme farve, så rækkefølgen er ligegyldig).
-    //  last:     seneste animation hvor røret hældte ud
-    //  receives: modtagelser startet siden da
-    let queues = [];
-    const newQueue = () => ({ last: Promise.resolve(), receives: [] });
-    const sides = {};                 // mål-rør -> hvilke sider (venstre/højre) der er optaget
-    let streamId = 0;
-
-    const won = computed(() => pending.value === 0 && state.value.length > 0 && isSolved(state.value));
-    watch(won, w => { if (w) Sound.fanfare(); });
-
-    function load(ts) {
-      state.value = clone(ts);
-      tubes.value = clone(ts);
-      queues = ts.map(newQueue);
-      history.value = []; selected.value = null; hint.value = null;
-      moves.value = 0; message.value = ''; extraTubeUsed.value = false;
-    }
-    function newGame() { initial.value = generate(numColors.value); load(initial.value); }
-    function restart() { load(initial.value); }
-    function nextLevel() {
-      level.value++;
-      if (level.value % 3 === 0 && numColors.value < 10) numColors.value++;
-      newGame();
-    }
-
-    function tap(i) {
-      hint.value = null; message.value = '';
-      if (selected.value === null) {
-        if (state.value[i].length) { selected.value = i; Sound.clink(); }
-        return;
-      }
-      const from = selected.value;
-      selected.value = null;
-      if (from === i) return;
-      if (!canPour(state.value, from, i)) {
-        Sound.thud();
-        if (!tilts.value[i]) { shaking.value = i; setTimeout(() => (shaking.value = null), 300); }
-        return;
-      }
-      // Trækket valideres og udføres på den logiske tilstand med det samme ...
-      history.value.push(clone(state.value));
-      const color = peek(state.value[from]);
-      const n = pour(state.value, from, i);
-      const finalLen = state.value[i].length;
-      moves.value++;
-      pending.value++;
-      // ... og animationen sættes i kø:
-      //  kilden venter på alt, hvad den selv er involveret i (eneret),
-      //  målet venter kun på sin seneste udhældning, så flere kan hælde i samtidig.
-      //  Højst to ad gangen (én fra hver side), så den tredje venter på den næstsidste.
-      const A = queues[from], B = queues[i];
-      const waits = [A.last, ...A.receives, B.last];
-      if (B.receives.length >= 2) waits.push(B.receives[B.receives.length - 2]);
-      const job = Promise.all(waits)
-        .then(() => animatePour(from, i, n, color, finalLen))
-        .finally(() => { pending.value--; });
-      A.last = job; A.receives = [];
-      B.receives.push(job);
-    }
-
-    async function animatePour(from, to, n, color, finalLen) {
-      const ts = tubes.value;
-      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const unit = reduce ? 60 : 200;
-      document.documentElement.style.setProperty('--unit-ms', unit + 'ms');
-      const S = tubeEls[from], T = tubeEls[to];
-      const move = 'transform .35s ease-in-out';
-      let sid = null, dir = 0;
-
-      if (!reduce) {
-        const w = S.offsetWidth;
-        const sx = S.offsetLeft + w / 2, sy = S.offsetTop;
-        const tx = T.offsetLeft + T.offsetWidth / 2, ty = T.offsetTop;
-        dir = tx >= sx ? 1 : -1;
-        const used = sides[to] || (sides[to] = new Set());
-        if (used.has(dir)) dir = -dir;          // hæld fra den anden side
-        used.add(dir);
-        const deg = 50 + (CAP - ts[from].length) * 9;
-        const rad = deg * Math.PI / 180;
-        const lipX = dir * (w / 2) * Math.cos(rad), lipY = (w / 2) * Math.sin(rad);
-        const pourY = ty - 34;
-        const lipTarget = tx - dir * 6;          // to stråler side om side
-        const ox = lipTarget - lipX, oy = pourY - lipY;
-        tilts.value[from] = {
-          transform: `translate(${ox - sx}px, ${oy - sy}px) rotate(${dir * deg}deg)`,
-          transition: move, zIndex: 5 };
-        await sleep(360);
-
-        const segH = (T.offsetHeight - 21) / CAP;
-        const endY = ty + 18 + (CAP - finalLen) * segH;
-        sid = ++streamId;
-        streams.value.push({ id: sid, style: {
-          left: (tx - dir * 6 - 3) + 'px', top: pourY + 'px',
-          height: Math.max(0, endY - pourY) + 'px', background: PALETTE[color] } });
+      // Safari på iPhone ignorerer user-scalable=no, så knibe-zoom stoppes her.
+      for (const type of ['gesturestart', 'gesturechange']) {
+        document.addEventListener(type, (e) => e.preventDefault(), { passive: false })
       }
 
-      Sound.pour(n * unit, ts[to].length / CAP, Math.min(1, (ts[to].length + n) / CAP));
-      for (let k = 0; k < n; k++) {
-        ts[to].push(ts[from].pop());
-        await sleep(unit);
-      }
-      if (sid !== null) streams.value = streams.value.filter(s => s.id !== sid);
-      if (isTubeDone(ts[to])) Sound.chime();
+      createApp({
+        setup() {
+          const level = ref(1)
+          const numColors = ref(4)
+          // To lag af tilstand:
+          //  state: den logiske bane. Opdateres øjeblikkeligt, når et træk accepteres.
+          //  tubes: det, der vises. Animationerne flytter portionerne her, lidt efter lidt.
+          const state = ref([])
+          const tubes = ref([])
+          const initial = ref([])
+          const history = ref([]) // snapshots af state, ikke af det viste
+          const selected = ref(null)
+          const shaking = ref(null)
+          const hint = ref(null)
+          const moves = ref(0)
+          const message = ref('')
+          const extraTubeUsed = ref(false)
+          const pending = ref(0) // antal hældninger, der endnu ikke er animeret færdig
+          const tilts = ref({}) // rør-indeks -> inline-stil for vippede rør
+          const streams = ref([]) // aktive vandstråler
+          const muted = ref(false)
+          const tubeEls = []
+          // Kø pr. rør. At hælde UD kræver eneret over røret; at MODTAGE kan ske
+          // samtidig fra flere rør (de hælder altid samme farve, så rækkefølgen er ligegyldig).
+          //  last:     seneste animation hvor røret hældte ud
+          //  receives: modtagelser startet siden da
+          let queues = []
+          const newQueue = () => ({ last: Promise.resolve(), receives: [] })
+          const sides = {} // mål-rør -> hvilke sider (venstre/højre) der er optaget
+          let streamId = 0
 
-      if (!reduce) {
-        tilts.value[from] = { transform: '', transition: move, zIndex: 5 };
-        await sleep(360);
-        sides[to].delete(dir);
-      }
-      delete tilts.value[from];
-    }
+          const won = computed(() => pending.value === 0 && state.value.length > 0 && isSolved(state.value))
+          watch(won, (w) => {
+            if (w) Sound.fanfare()
+          })
 
-    function undo() {
-      if (pending.value > 0 || !history.value.length) return;
-      state.value = history.value.pop();
-      tubes.value = clone(state.value);
-      queues = state.value.map(newQueue);
-      moves.value = Math.max(0, moves.value - 1);
-      selected.value = null; hint.value = null;
-    }
-    function addTube() {
-      if (extraTubeUsed.value) return;
-      history.value.push(clone(state.value));
-      state.value.push([]); tubes.value.push([]); queues.push(newQueue());
-      extraTubeUsed.value = true;
-    }
-    function showHint() {
-      const r = solve(state.value);
-      if (r && r.length) { hint.value = r[0]; message.value = 'Hæld fra det første markerede rør til det andet.'; }
-      else if (r === false) message.value = 'Banen kan ikke løses herfra. Fortryd et par træk eller brug ekstra rør.';
-      else message.value = 'Fandt ikke en løsning hurtigt nok. Prøv igen efter et par træk.';
-    }
-    function toggleSound() { muted.value = !muted.value; Sound.setMuted(muted.value); }
+          function load(ts) {
+            state.value = clone(ts)
+            tubes.value = clone(ts)
+            queues = ts.map(newQueue)
+            history.value = []
+            selected.value = null
+            hint.value = null
+            moves.value = 0
+            message.value = ''
+            extraTubeUsed.value = false
+          }
+          function newGame() {
+            initial.value = generate(numColors.value)
+            load(initial.value)
+          }
+          function restart() {
+            load(initial.value)
+          }
+          function nextLevel() {
+            level.value++
+            if (level.value % 3 === 0 && numColors.value < 10) numColors.value++
+            newGame()
+          }
 
-    newGame();
-    return { PALETTE, level, numColors, tubes, history, selected, shaking, hint, moves,
-             message, extraTubeUsed, won, pending, tilts, streams, muted, tubeEls, isTubeDone,
-             tap, undo, restart, addTube, showHint, newGame, nextLevel, toggleSound,
-             version: APP_VERSION };
-  }
-}).mount('#app');
-</script>
-</body>
+          function tap(i) {
+            hint.value = null
+            message.value = ''
+            if (selected.value === null) {
+              if (state.value[i].length) {
+                selected.value = i
+                Sound.clink()
+              }
+              return
+            }
+            const from = selected.value
+            selected.value = null
+            if (from === i) return
+            if (!canPour(state.value, from, i)) {
+              Sound.thud()
+              if (!tilts.value[i]) {
+                shaking.value = i
+                setTimeout(() => (shaking.value = null), 300)
+              }
+              return
+            }
+            // Trækket valideres og udføres på den logiske tilstand med det samme ...
+            history.value.push(clone(state.value))
+            const color = peek(state.value[from])
+            const n = pour(state.value, from, i)
+            const finalLen = state.value[i].length
+            moves.value++
+            pending.value++
+            // ... og animationen sættes i kø:
+            //  kilden venter på alt, hvad den selv er involveret i (eneret),
+            //  målet venter kun på sin seneste udhældning, så flere kan hælde i samtidig.
+            //  Højst to ad gangen (én fra hver side), så den tredje venter på den næstsidste.
+            const A = queues[from],
+              B = queues[i]
+            const waits = [A.last, ...A.receives, B.last]
+            if (B.receives.length >= 2) waits.push(B.receives[B.receives.length - 2])
+            const job = Promise.all(waits)
+              .then(() => animatePour(from, i, n, color, finalLen))
+              .finally(() => {
+                pending.value--
+              })
+            A.last = job
+            A.receives = []
+            B.receives.push(job)
+          }
+
+          async function animatePour(from, to, n, color, finalLen) {
+            const ts = tubes.value
+            const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+            const unit = reduce ? 60 : 200
+            document.documentElement.style.setProperty('--unit-ms', unit + 'ms')
+            const S = tubeEls[from],
+              T = tubeEls[to]
+            const move = 'transform .35s ease-in-out'
+            let sid = null,
+              dir = 0
+
+            if (!reduce) {
+              const w = S.offsetWidth
+              const sx = S.offsetLeft + w / 2,
+                sy = S.offsetTop
+              const tx = T.offsetLeft + T.offsetWidth / 2,
+                ty = T.offsetTop
+              dir = tx >= sx ? 1 : -1
+              const used = sides[to] || (sides[to] = new Set())
+              if (used.has(dir)) dir = -dir // hæld fra den anden side
+              used.add(dir)
+              const deg = 50 + (CAP - ts[from].length) * 9
+              const rad = (deg * Math.PI) / 180
+              const lipX = dir * (w / 2) * Math.cos(rad),
+                lipY = (w / 2) * Math.sin(rad)
+              const pourY = ty - 34
+              const lipTarget = tx - dir * 6 // to stråler side om side
+              const ox = lipTarget - lipX,
+                oy = pourY - lipY
+              tilts.value[from] = {
+                transform: `translate(${ox - sx}px, ${oy - sy}px) rotate(${dir * deg}deg)`,
+                transition: move,
+                zIndex: 5,
+              }
+              await sleep(360)
+
+              const segH = (T.offsetHeight - 21) / CAP
+              const endY = ty + 18 + (CAP - finalLen) * segH
+              sid = ++streamId
+              streams.value.push({
+                id: sid,
+                style: {
+                  left: tx - dir * 6 - 3 + 'px',
+                  top: pourY + 'px',
+                  height: Math.max(0, endY - pourY) + 'px',
+                  background: PALETTE[color],
+                },
+              })
+            }
+
+            Sound.pour(n * unit, ts[to].length / CAP, Math.min(1, (ts[to].length + n) / CAP))
+            for (let k = 0; k < n; k++) {
+              ts[to].push(ts[from].pop())
+              await sleep(unit)
+            }
+            if (sid !== null) streams.value = streams.value.filter((s) => s.id !== sid)
+            if (isTubeDone(ts[to])) Sound.chime()
+
+            if (!reduce) {
+              tilts.value[from] = { transform: '', transition: move, zIndex: 5 }
+              await sleep(360)
+              sides[to].delete(dir)
+            }
+            delete tilts.value[from]
+          }
+
+          function undo() {
+            if (pending.value > 0 || !history.value.length) return
+            state.value = history.value.pop()
+            tubes.value = clone(state.value)
+            queues = state.value.map(newQueue)
+            moves.value = Math.max(0, moves.value - 1)
+            selected.value = null
+            hint.value = null
+          }
+          function addTube() {
+            if (extraTubeUsed.value) return
+            history.value.push(clone(state.value))
+            state.value.push([])
+            tubes.value.push([])
+            queues.push(newQueue())
+            extraTubeUsed.value = true
+          }
+          function showHint() {
+            const r = solve(state.value)
+            if (r && r.length) {
+              hint.value = r[0]
+              message.value = 'Hæld fra det første markerede rør til det andet.'
+            } else if (r === false)
+              message.value = 'Banen kan ikke løses herfra. Fortryd et par træk eller brug ekstra rør.'
+            else message.value = 'Fandt ikke en løsning hurtigt nok. Prøv igen efter et par træk.'
+          }
+          function toggleSound() {
+            muted.value = !muted.value
+            Sound.setMuted(muted.value)
+          }
+
+          newGame()
+          return {
+            PALETTE,
+            level,
+            numColors,
+            tubes,
+            history,
+            selected,
+            shaking,
+            hint,
+            moves,
+            message,
+            extraTubeUsed,
+            won,
+            pending,
+            tilts,
+            streams,
+            muted,
+            tubeEls,
+            isTubeDone,
+            tap,
+            undo,
+            restart,
+            addTube,
+            showHint,
+            newGame,
+            nextLevel,
+            toggleSound,
+            version: APP_VERSION,
+          }
+        },
+      }).mount('#app')
+    </script>
+  </body>
 </html>
