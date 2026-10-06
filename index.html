@@ -541,10 +541,6 @@
 
       /* ---------- Lyd: syntetiseret med Web Audio API, ingen lydfiler ---------- */
       const Sound = (() => {
-        const BROOK_LOW = 0.22,
-          BROOK_HIGH = 0.37,
-          JET = 0.05,
-          SPLASH = 0.15
         let ctx = null,
           muted = false
         function get() {
@@ -570,74 +566,50 @@
           o.stop(t + dur + 0.02)
           return o
         }
-        // Brun støj som i SuperCollider: en tilfældig vandring mellem -1 og 1.
-        function brownNoise(c, seconds) {
-          const len = Math.ceil(c.sampleRate * seconds)
-          const buf = c.createBuffer(1, len, c.sampleRate),
-            data = buf.getChannelData(0)
-          let z = Math.random() * 2 - 1
-          for (let i = 0; i < len; i++) {
-            z += (Math.random() * 2 - 1) * 0.125
-            if (z > 1) z = 2 - z
-            else if (z < -1) z = -2 - z
-            data[i] = z
+        // Bobler (van den Doel: fysisk model af væskelyde). Hver luftboble, der rives ned i
+        // vandet, ringer som en kort sinustone. Tonen afhænger af boblens størrelse
+        // (f = 3,26 / radius), dør hurtigt ud og stiger lidt imens. Hældelyden er en tilfældig
+        // regn af bobler, flest små og færre store.
+        const BUBBLES = { rate: 320, rMin: 0.8, rMax: 6, alpha: 1.6, loud: 0.8, rise: 0.1 }
+        function bubbleRain(sr, seconds, k0, k1) {
+          const { rate, rMin, rMax, alpha, loud, rise } = BUBBLES
+          const len = Math.ceil((seconds + 0.25) * sr)
+          const data = new Float32Array(len)
+          const a = 1 - alpha
+          const lo = Math.pow(rMin, a),
+            hi = Math.pow(rMax, a)
+          for (let t = 0; ;) {
+            t += -Math.log(1 - Math.random()) / rate // tilfældig ventetid (Poisson)
+            if (t >= seconds) break
+            const r = Math.pow(lo + Math.random() * (hi - lo), 1 / a) // radius i mm
+            const f0 = (3260 / r) * (k0 + (k1 - k0) * (t / seconds))
+            const damp = 0.13 * f0 + 0.0072 * Math.pow(f0, 1.5)
+            const amp = Math.pow(r / rMax, loud) * (0.4 + 0.6 * Math.random())
+            const start = Math.floor(t * sr)
+            const n = Math.min(len - start, Math.ceil((6.9 / damp) * sr))
+            const chirp = 0.5 * rise * damp
+            for (let i = 0; i < n; i++) {
+              const tt = i / sr
+              data[start + i] += amp * Math.exp(-damp * tt) * Math.sin(2 * Math.PI * f0 * (tt + chirp * tt * tt))
+            }
           }
-          const src = c.createBufferSource()
-          src.buffer = buf
-          return src
+          // Samme styrke uanset hvor mange bobler, der tilfældigvis kom.
+          let sum = 0
+          const n = Math.min(len, Math.ceil(seconds * sr))
+          for (let i = 0; i < n; i++) sum += data[i] * data[i]
+          const k = 0.034 / Math.max(1e-9, Math.sqrt(sum / n))
+          for (let i = 0; i < len; i++) data[i] *= k
+          return data
         }
-        // Et lag af klukkende vand (efter James McCartneys "babbling brook" i SuperCollider):
-        // stærkt dæmpet brun støj gennem et højpasfilter med kraftig resonans. Filterets
-        // frekvens springer tilfældigt rundt (lavpasfiltreret støj ved ca. 15 Hz), så
-        // resonansen giver korte, skiftende vandtoner – kluk og pludren som i en bæk.
-        function brook(c, dest, t, d, base0, base1, depth, rate, vol) {
-          const src = brownNoise(c, d)
-          // OnePole(0.99) fra SuperCollider. Ældre Safari mangler IIR-filtre, så dér et lavpas.
-          let smooth
-          if (c.createIIRFilter) smooth = c.createIIRFilter([0.01], [1, -0.99])
-          else {
-            smooth = c.createBiquadFilter()
-            smooth.type = 'lowpass'
-            smooth.frequency.value = 70
-          }
-          const hp = c.createBiquadFilter()
-          hp.type = 'highpass'
-          hp.Q.value = 30 // dB, svarer til rq = 0.03
-          hp.frequency.setValueAtTime(base0, t)
-          hp.frequency.linearRampToValueAtTime(base1, t + d)
-          const wobble = brownNoise(c, d)
-          const wobbleLp = c.createBiquadFilter()
-          wobbleLp.type = 'lowpass'
-          wobbleLp.frequency.value = rate
-          const wobbleDepth = c.createGain()
-          wobbleDepth.gain.value = depth
-          wobble.connect(wobbleLp).connect(wobbleDepth).connect(hp.frequency)
-          const g = c.createGain()
-          g.gain.value = vol
-          src.connect(smooth).connect(hp).connect(g).connect(dest)
-          src.start(t)
-          wobble.start(t)
-          src.stop(t + d)
-          wobble.stop(t + d)
-        }
-        // Lyserød støj (Paul Kelletts filter): blødere end hvid støj, lyder som rindende vand.
-        function pinkNoise(c, seconds) {
-          const len = Math.ceil(c.sampleRate * seconds)
-          const buf = c.createBuffer(1, len, c.sampleRate),
-            data = buf.getChannelData(0)
-          let b0 = 0,
-            b1 = 0,
-            b2 = 0
-          for (let i = 0; i < len; i++) {
-            const w = Math.random() * 2 - 1
-            b0 = 0.99765 * b0 + w * 0.099046
-            b1 = 0.963 * b1 + w * 0.2965164
-            b2 = 0.57 * b2 + w * 1.0526913
-            data[i] = (b0 + b1 + b2 + w * 0.1848) * 0.2
-          }
-          const src = c.createBufferSource()
-          src.buffer = buf
-          return src
+        // Kort efterklang, som om lyden er inde i glasrøret: støj, der dør ud på en kvart sekund.
+        let roomIR = null
+        function room(c) {
+          if (roomIR) return roomIR
+          const len = Math.ceil(0.25 * c.sampleRate)
+          roomIR = c.createBuffer(1, len, c.sampleRate)
+          const d = roomIR.getChannelData(0)
+          for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.exp((-i / c.sampleRate) * 18)
+          return roomIR
         }
         return {
           setMuted(m) {
@@ -657,53 +629,30 @@
             if (!c) return
             tone(c, 140, c.currentTime, 0.15, 0.15, 'triangle')
           },
-          // Hældelyd: to lag klukkende vand (et dybt og et lyst) som i en bæk, en svag susen
-          // fra strålen og et lille plask, når den rammer. Klukkenes tone stiger lidt, mens
+          // Hældelyd: en regn af bobler med en kort efterklang. Boblernes tone stiger, mens
           // røret fyldes, fordi luftsøjlen over væsken bliver kortere.
           pour(ms, fromLevel, toLevel) {
             const c = get()
             if (!c) return
             const t = c.currentTime,
-              d = ms / 1000,
-              end = t + d
-            const out = c.createGain()
-            out.gain.setValueAtTime(0.0001, t)
-            out.gain.linearRampToValueAtTime(1, t + 0.04)
-            out.gain.setValueAtTime(1, end - 0.06)
-            out.gain.linearRampToValueAtTime(0.0001, end + 0.04)
-            out.connect(c.destination)
-
-            const k0 = 0.8 + fromLevel * 0.6,
-              k1 = 0.8 + toLevel * 0.6
-            brook(c, out, t, d + 0.05, 500 * k0, 500 * k1, 400, 14, BROOK_LOW)
-            brook(c, out, t, d + 0.05, 1000 * k0, 1000 * k1, 800, 20, BROOK_HIGH)
-
-            // Strålens susen
-            const jet = pinkNoise(c, d + 0.05)
-            const hp = c.createBiquadFilter()
-            hp.type = 'highpass'
-            hp.frequency.value = 400
-            const lp = c.createBiquadFilter()
-            lp.type = 'lowpass'
-            lp.frequency.value = 3000
-            const jetGain = c.createGain()
-            jetGain.gain.value = JET
-            jet.connect(hp).connect(lp).connect(jetGain).connect(out)
-            jet.start(t)
-            jet.stop(end + 0.05)
-
-            // Plasket
-            const splash = pinkNoise(c, 0.15)
-            const splashLp = c.createBiquadFilter()
-            splashLp.type = 'lowpass'
-            splashLp.frequency.value = 1200
-            const splashGain = c.createGain()
-            splashGain.gain.setValueAtTime(0.0001, t)
-            splashGain.gain.exponentialRampToValueAtTime(SPLASH, t + 0.005)
-            splashGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.1)
-            splash.connect(splashLp).connect(splashGain).connect(c.destination)
-            splash.start(t)
-            splash.stop(t + 0.15)
+              d = ms / 1000
+            const data = bubbleRain(c.sampleRate, d, 1 + fromLevel * 0.35, 1 + toLevel * 0.35)
+            const buf = c.createBuffer(1, data.length, c.sampleRate)
+            buf.getChannelData(0).set(data)
+            const src = c.createBufferSource()
+            src.buffer = buf
+            const g = c.createGain()
+            g.gain.setValueAtTime(0.0001, t)
+            g.gain.linearRampToValueAtTime(1, t + 0.02)
+            g.gain.setValueAtTime(1, t + d)
+            g.gain.linearRampToValueAtTime(0.0001, t + d + 0.2)
+            src.connect(g).connect(c.destination)
+            const conv = c.createConvolver()
+            conv.buffer = room(c)
+            const wet = c.createGain()
+            wet.gain.value = 0.35
+            g.connect(conv).connect(wet).connect(c.destination)
+            src.start(t)
           },
           chime() {
             // et rør er færdigt
