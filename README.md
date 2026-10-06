@@ -25,11 +25,19 @@ Alt ligger i `index.html`:
 - **Solver**: dybde-først-søgning med besøgte tilstande. Bruges til at sikre, at nye baner kan løses, og til Tip-knappen.
 - **To lag af tilstand**: `state` er den logiske bane og opdateres med det samme; `tubes` er det, der vises, og indhentes af animationerne.
 - **Animationskø pr. rør**: at hælde ud kræver eneret over røret, mens flere rør kan hælde ned i samme rør samtidig (en læse/skrive-lås).
-- **Lyd**: syntetiseret med Web Audio API, uden lydfiler. Hældelyden er filtreret brun støj med stigende frekvens, og boblerne er korte stigende sinustoner.
+- **Lyd**: syntetiseret med Web Audio API, uden lydfiler. Hældelyden er to lag klukkende vand som i en bæk (efter James McCartneys "babbling brook" i SuperCollider: brun støj gennem et højpasfilter med kraftig resonans, hvis frekvens springer tilfældigt rundt), en svag susen fra strålen og et lille plask. Klukkenes tone stiger lidt, mens røret fyldes.
+- **Skvulp**: røret, der modtager, gynger let, mens der hældes, og skvulper et par gange, inden væsken falder til ro (CSS-animationer, slået fra ved reduceret bevægelse).
 
 ## Funktioner
 
-Fortryd, start forfra, ekstra rør, tip, valg af antal farver (3–10), stigende sværhedsgrad, lys/mørk tilstand og respekt for reduceret bevægelse.
+Fortryd, start forfra, ekstra rør, tip, 12 niveauer med stigende sværhedsgrad, lys/mørk tilstand og respekt for reduceret bevægelse.
+
+## Niveauer
+
+- Niveau 1–12 har 3–10 farver (`LEVEL_COLORS` i `index.html`).
+- Efter 3 løste baner på et niveau går man automatisk op på næste. Tællingen starter forfra, når spillet åbnes, og når man selv vælger et niveau.
+- På niveau 12 fortsætter man med nye baner, så længe man vil.
+- Niveauet gemmes i `localStorage` (nøglen `vandsortering`), så man fortsætter på samme niveau næste gang.
 
 ## Versioner og releases
 
