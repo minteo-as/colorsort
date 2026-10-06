@@ -25,7 +25,7 @@ Alt ligger i `index.html`:
 - **Solver**: dybde-først-søgning med besøgte tilstande. Bruges til at sikre, at nye baner kan løses, og til Tip-knappen.
 - **To lag af tilstand**: `state` er den logiske bane og opdateres med det samme; `tubes` er det, der vises, og indhentes af animationerne.
 - **Animationskø pr. rør**: at hælde ud kræver eneret over røret, mens flere rør kan hælde ned i samme rør samtidig (en læse/skrive-lås).
-- **Lyd**: syntetiseret med Web Audio API, uden lydfiler. Hældelyden er to lag klukkende vand som i en bæk (efter James McCartneys "babbling brook" i SuperCollider: brun støj gennem et højpasfilter med kraftig resonans, hvis frekvens springer tilfældigt rundt), en svag susen fra strålen og et lille plask. Klukkenes tone stiger lidt, mens røret fyldes.
+- **Lyd**: syntetiseret med Web Audio API, uden lydfiler. Hældelyden er en regn af bobler efter van den Doels fysiske model af væskelyde: hver boble er en kort sinustone, der dør hurtigt ud og stiger lidt i tone, og tonen afhænger af boblens størrelse. Tonen stiger, mens røret fyldes, og en kort efterklang får det til at lyde, som om vandet er inde i røret.
 - **Skvulp**: røret, der modtager, gynger let, mens der hældes, og skvulper et par gange, inden væsken falder til ro (CSS-animationer, slået fra ved reduceret bevægelse).
 
 ## Funktioner
