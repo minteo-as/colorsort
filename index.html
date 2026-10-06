@@ -202,6 +202,51 @@
         height: 25%;
         flex: 0 0 auto;
       }
+      /* Skvulp i røret, der modtager: hele væskesøjlen vipper om bunden, så overfladen og
+         skillelinjerne mellem farverne skråner frem og tilbage. --dir er den side, strålen
+         kommer fra. Mens der hældes, gynger væsken; bagefter dør bevægelsen ud. */
+      .liquid.slosh-pour,
+      .liquid.slosh-settle {
+        transform-origin: 50% 100%;
+      }
+      .liquid.slosh-pour {
+        animation: slosh-pour 0.5s ease-in-out infinite;
+      }
+      .liquid.slosh-settle {
+        animation: slosh-settle 0.9s ease-out;
+      }
+      @keyframes slosh-pour {
+        0%,
+        100% {
+          transform: skewY(0deg);
+        }
+        30% {
+          transform: skewY(calc(var(--dir) * 5deg));
+        }
+        70% {
+          transform: skewY(calc(var(--dir) * -4deg));
+        }
+      }
+      @keyframes slosh-settle {
+        0% {
+          transform: skewY(0deg);
+        }
+        20% {
+          transform: skewY(calc(var(--dir) * -8deg));
+        }
+        42% {
+          transform: skewY(calc(var(--dir) * 6deg));
+        }
+        62% {
+          transform: skewY(calc(var(--dir) * -3.5deg));
+        }
+        80% {
+          transform: skewY(calc(var(--dir) * 1.5deg));
+        }
+        100% {
+          transform: skewY(0deg);
+        }
+      }
       /* Vue <transition-group>: portioner vokser ind og drænes ud */
       .liq-enter-active,
       .liq-leave-active {
@@ -317,8 +362,9 @@
           transition: none;
         }
         .tube.shake,
-        .stream {
-          animation: none;
+        .stream,
+        .liquid {
+          animation: none !important;
         }
       }
     </style>
@@ -358,7 +404,13 @@
           @click="tap(i)"
           @keydown.enter.space.prevent="tap(i)"
         >
-          <transition-group name="liq" tag="div" class="liquid">
+          <transition-group
+            name="liq"
+            tag="div"
+            class="liquid"
+            :class="sloshes[i] && sloshes[i].cls"
+            :style="sloshes[i] ? { '--dir': sloshes[i].dir } : null"
+          >
             <div v-for="(c, j) in tube" :key="j" class="seg" :style="{ background: PALETTE[c] }"></div>
           </transition-group>
         </div>
@@ -514,10 +566,38 @@
           o.stop(t + dur + 0.02)
           return o
         }
-        // En boble lyder som en kort sinustone hvis tonehøjde stiger (Minnaert-resonans).
-        function bubble(c, t, f) {
-          const o = tone(c, f, t, 0.07, 0.12)
-          o.frequency.exponentialRampToValueAtTime(f * 1.7, t + 0.06)
+        // En boble lyder som en kort sinustone, hvis tonehøjde stiger, mens den dør ud
+        // (Minnaert-resonans). Mange små, svage bobler i tilfældig takt lyder som pludren.
+        function bubble(c, dest, t, f, vol, dur) {
+          const o = c.createOscillator(),
+            g = c.createGain()
+          o.frequency.setValueAtTime(f, t)
+          o.frequency.exponentialRampToValueAtTime(f * (1.2 + Math.random() * 0.4), t + dur)
+          g.gain.setValueAtTime(0.0001, t)
+          g.gain.exponentialRampToValueAtTime(vol, t + 0.003)
+          g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+          o.connect(g).connect(dest)
+          o.start(t)
+          o.stop(t + dur + 0.02)
+        }
+        // Lyserød støj (Paul Kelletts filter): blødere end hvid støj, lyder som rindende vand.
+        function pinkNoise(c, seconds) {
+          const len = Math.ceil(c.sampleRate * seconds)
+          const buf = c.createBuffer(1, len, c.sampleRate),
+            data = buf.getChannelData(0)
+          let b0 = 0,
+            b1 = 0,
+            b2 = 0
+          for (let i = 0; i < len; i++) {
+            const w = Math.random() * 2 - 1
+            b0 = 0.99765 * b0 + w * 0.099046
+            b1 = 0.963 * b1 + w * 0.2965164
+            b2 = 0.57 * b2 + w * 1.0526913
+            data[i] = (b0 + b1 + b2 + w * 0.1848) * 0.2
+          }
+          const src = c.createBufferSource()
+          src.buffer = buf
+          return src
         }
         return {
           setMuted(m) {
@@ -537,44 +617,81 @@
             if (!c) return
             tone(c, 140, c.currentTime, 0.15, 0.15, 'triangle')
           },
-          // Hældelyd: brun støj gennem et båndpasfilter. Filterets frekvens stiger,
-          // fordi luftsøjlen over væsken bliver kortere, efterhånden som røret fyldes.
+          // Hældelyd i fire lag:
+          //  1. Strålen: lyserød støj med uregelmæssig styrke, så den pludrer i stedet for at suse.
+          //  2. Fyldningen: et smalt bånd i støjen, der stiger i tone, fordi luftsøjlen over
+          //     væsken bliver kortere, efterhånden som røret fyldes.
+          //  3. Bobler: en tæt regn af korte, svage bobler omkring fyldningens tone.
+          //  4. Et lille plask, når strålen rammer.
           pour(ms, fromLevel, toLevel) {
             const c = get()
             if (!c) return
             const t = c.currentTime,
-              d = ms / 1000
-            const len = Math.ceil(c.sampleRate * d)
-            const buf = c.createBuffer(1, len, c.sampleRate),
-              data = buf.getChannelData(0)
-            let last = 0
-            for (let i = 0; i < len; i++) {
-              last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02
-              data[i] = last * 3.5
+              d = ms / 1000,
+              end = t + d
+            const out = c.createGain()
+            out.gain.value = 0.4
+            out.connect(c.destination)
+
+            // 1. Strålen
+            const jet = pinkNoise(c, d + 0.1)
+            const hp = c.createBiquadFilter()
+            hp.type = 'highpass'
+            hp.frequency.value = 250
+            const lp = c.createBiquadFilter()
+            lp.type = 'lowpass'
+            lp.frequency.value = 2600
+            const jetGain = c.createGain()
+            jetGain.gain.setValueAtTime(0.0001, t)
+            jetGain.gain.linearRampToValueAtTime(0.35, t + 0.03)
+            for (let k = t + 0.03; k < end - 0.05; k += 0.02 + Math.random() * 0.03) {
+              jetGain.gain.setTargetAtTime(0.15 + Math.random() * 0.3, k, 0.012)
             }
-            const src = c.createBufferSource()
-            src.buffer = buf
+            jetGain.gain.setTargetAtTime(0.0001, end - 0.05, 0.03)
+            jet.connect(hp).connect(lp).connect(jetGain).connect(out)
+            jet.start(t)
+            jet.stop(end + 0.1)
+
+            // 2. Fyldningen
+            const f0 = 450 + fromLevel * 900,
+              f1 = 450 + toLevel * 900
+            const fill = pinkNoise(c, d + 0.1)
             const bp = c.createBiquadFilter()
             bp.type = 'bandpass'
-            bp.Q.value = 5
-            const f0 = 300 + fromLevel * 1000,
-              f1 = 300 + toLevel * 1000
+            bp.Q.value = 14
             bp.frequency.setValueAtTime(f0, t)
-            bp.frequency.linearRampToValueAtTime(f1, t + d)
-            const g = c.createGain()
-            g.gain.setValueAtTime(0.0001, t)
-            g.gain.linearRampToValueAtTime(0.6, t + 0.05)
-            g.gain.setValueAtTime(0.6, t + Math.max(0.06, d - 0.08))
-            g.gain.linearRampToValueAtTime(0.0001, t + d)
-            src.connect(bp).connect(g).connect(c.destination)
-            src.start(t)
-            src.stop(t + d)
-            const n = Math.round(d * 16)
-            for (let i = 0; i < n; i++) {
-              const bt = t + Math.random() * d * 0.95
-              const f = (f0 + (f1 - f0) * ((bt - t) / d)) * (0.9 + Math.random() * 0.6)
-              bubble(c, bt, f)
+            bp.frequency.linearRampToValueAtTime(f1, end)
+            const fillGain = c.createGain()
+            fillGain.gain.setValueAtTime(0.0001, t)
+            fillGain.gain.linearRampToValueAtTime(1.6, t + 0.06)
+            fillGain.gain.setTargetAtTime(0.0001, end - 0.05, 0.04)
+            fill.connect(bp).connect(fillGain).connect(out)
+            fill.start(t)
+            fill.stop(end + 0.1)
+
+            // 3. Bobler
+            const bubbles = c.createBiquadFilter()
+            bubbles.type = 'lowpass'
+            bubbles.frequency.value = 3500
+            bubbles.connect(out)
+            for (let bt = t + 0.02; bt < end - 0.03; bt += 0.008 + Math.random() * 0.03) {
+              const p = (bt - t) / d
+              const f = (f0 + (f1 - f0) * p) * (0.7 + Math.random() * 0.9)
+              bubble(c, bubbles, bt, f, 0.015 + Math.random() * 0.05, 0.025 + Math.random() * 0.045)
             }
+
+            // 4. Plasket
+            const splash = pinkNoise(c, 0.15)
+            const splashLp = c.createBiquadFilter()
+            splashLp.type = 'lowpass'
+            splashLp.frequency.value = 1200
+            const splashGain = c.createGain()
+            splashGain.gain.setValueAtTime(0.0001, t)
+            splashGain.gain.exponentialRampToValueAtTime(0.5, t + 0.005)
+            splashGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12)
+            splash.connect(splashLp).connect(splashGain).connect(out)
+            splash.start(t)
+            splash.stop(t + 0.15)
           },
           chime() {
             // et rør er færdigt
@@ -647,6 +764,9 @@
           const pending = ref(0) // antal hældninger, der endnu ikke er animeret færdig
           const tilts = ref({}) // rør-indeks -> inline-stil for vippede rør
           const streams = ref([]) // aktive vandstråler
+          const sloshes = ref({}) // rør-indeks -> { cls, dir } for skvulp i røret, der modtager
+          const receiving = {} // rør-indeks -> antal hældninger, der lige nu løber ned i røret
+          let sloshId = 0
           const muted = ref(false)
           const tubeEls = []
           // Kø pr. rør. At hælde UD kræver eneret over røret; at MODTAGE kan ske
@@ -790,11 +910,14 @@
             }
 
             Sound.pour(n * unit, ts[to].length / CAP, Math.min(1, (ts[to].length + n) / CAP))
+            receiving[to] = (receiving[to] || 0) + 1
+            if (!reduce) sloshes.value[to] = { cls: 'slosh-pour', dir: dir || 1 }
             for (let k = 0; k < n; k++) {
               ts[to].push(ts[from].pop())
               await sleep(unit)
             }
             if (sid !== null) streams.value = streams.value.filter((s) => s.id !== sid)
+            if (--receiving[to] === 0 && !reduce) settle(to, dir || 1)
             if (isTubeDone(ts[to])) Sound.chime()
 
             if (!reduce) {
@@ -803,6 +926,15 @@
               sides[to].delete(dir)
             }
             delete tilts.value[from]
+          }
+
+          // Når strålen stopper, skvulper væsken et par gange og falder til ro.
+          function settle(i, dir) {
+            const id = ++sloshId
+            sloshes.value[i] = { cls: 'slosh-settle', dir: -dir, id }
+            setTimeout(() => {
+              if (sloshes.value[i] && sloshes.value[i].id === id) delete sloshes.value[i]
+            }, 900)
           }
 
           function undo() {
@@ -857,6 +989,7 @@
             pending,
             tilts,
             streams,
+            sloshes,
             muted,
             tubeEls,
             isTubeDone,

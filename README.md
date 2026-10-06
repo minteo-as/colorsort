@@ -25,7 +25,8 @@ Alt ligger i `index.html`:
 - **Solver**: dybde-først-søgning med besøgte tilstande. Bruges til at sikre, at nye baner kan løses, og til Tip-knappen.
 - **To lag af tilstand**: `state` er den logiske bane og opdateres med det samme; `tubes` er det, der vises, og indhentes af animationerne.
 - **Animationskø pr. rør**: at hælde ud kræver eneret over røret, mens flere rør kan hælde ned i samme rør samtidig (en læse/skrive-lås).
-- **Lyd**: syntetiseret med Web Audio API, uden lydfiler. Hældelyden er filtreret brun støj med stigende frekvens, og boblerne er korte stigende sinustoner.
+- **Lyd**: syntetiseret med Web Audio API, uden lydfiler. Hældelyden består af en pludrende stråle (lyserød støj med svingende styrke), en tone, der stiger, mens røret fyldes, en tæt regn af små bobler (korte stigende sinustoner) og et lille plask, når strålen rammer.
+- **Skvulp**: røret, der modtager, gynger let, mens der hældes, og skvulper et par gange, inden væsken falder til ro (CSS-animationer, slået fra ved reduceret bevægelse).
 
 ## Funktioner
 
