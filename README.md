@@ -29,7 +29,14 @@ Alt ligger i `index.html`:
 
 ## Funktioner
 
-Fortryd, start forfra, ekstra rør, tip, valg af antal farver (3–10), stigende sværhedsgrad, lys/mørk tilstand og respekt for reduceret bevægelse.
+Fortryd, start forfra, ekstra rør, tip, 12 niveauer med stigende sværhedsgrad, lys/mørk tilstand og respekt for reduceret bevægelse.
+
+## Niveauer
+
+- Niveau 1–12 har 3–10 farver (`LEVEL_COLORS` i `index.html`).
+- Efter 3 løste baner på et niveau går man automatisk op på næste. Tællingen starter forfra, når spillet åbnes, og når man selv vælger et niveau.
+- På niveau 12 fortsætter man med nye baner, så længe man vil.
+- Niveauet gemmes i `localStorage` (nøglen `vandsortering`), så man fortsætter på samme niveau næste gang.
 
 ## Versioner og releases
 

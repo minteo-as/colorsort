@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <!-- Ingen zoom: knibe-zoom og dobbelttryk-zoom slås fra (se også touch-action og gesturestart nedenfor). -->
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-    <title>Vandsortering – Vue 3</title>
+    <title>Vandsortering</title>
     <!-- Udfyldes af scripts/build.mjs (fx "0.2.0"). Tom, når index.html åbnes direkte. -->
     <meta name="app-version" content="" />
     <link rel="icon" href="icons/favicon.svg" type="image/svg+xml" />
@@ -326,14 +326,17 @@
   <body>
     <div id="app">
       <header>
-        <h1>Bane {{ level }}</h1>
-        <span class="meta">{{ moves }} træk</span>
+        <h1>Niveau {{ level }} af {{ MAX_LEVEL }}</h1>
+        <span class="meta"
+          >Bane {{ solved + 1 }}<template v-if="level < MAX_LEVEL"> af {{ BOARDS_PER_LEVEL }}</template> · {{ moves }}
+          træk</span
+        >
       </header>
       <div class="settings">
         <label
-          >Antal farver
-          <select v-model.number="numColors" @change="newGame" :disabled="pending > 0">
-            <option v-for="n in [3,4,5,6,7,8,9,10]" :key="n" :value="n">{{ n }}</option>
+          >Niveau
+          <select v-model.number="level" @change="chooseLevel" :disabled="pending > 0">
+            <option v-for="n in MAX_LEVEL" :key="n" :value="n">{{ n }} ({{ colorsFor(n) }} farver)</option>
           </select>
         </label>
         <button @click="toggleSound">{{ muted ? 'Slå lyd til' : 'Slå lyd fra' }}</button>
@@ -374,10 +377,11 @@
 
       <p class="version" v-if="version">Version {{ version }}</p>
 
-      <div class="win" v-if="won" @click="nextLevel">
+      <div class="win" v-if="won" @click="nextBoard">
         <div>
           <h2>Løst!</h2>
-          <p>{{ moves }} træk. Tryk for næste bane.</p>
+          <p v-if="levelUpNext">{{ moves }} træk. Tryk for at gå op på niveau {{ level + 1 }}.</p>
+          <p v-else>{{ moves }} træk. Tryk for næste bane.</p>
         </div>
       </div>
     </div>
@@ -589,6 +593,28 @@
         }
       })()
 
+      /* ---------- Niveauer og gemt niveau ---------- */
+      // 12 niveauer med flere farver jo højere oppe. Efter 3 løste baner på et niveau går man
+      // op på næste. På niveau 12 fortsætter man med nye baner, så længe man vil.
+      const LEVEL_COLORS = [3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 10]
+      const MAX_LEVEL = LEVEL_COLORS.length
+      const BOARDS_PER_LEVEL = 3
+      const colorsFor = (level) => LEVEL_COLORS[level - 1]
+      const STORAGE_KEY = 'vandsortering'
+      // Kun niveauet gemmes. localStorage kan være utilgængelig (fx privat browsing), så fejl ignoreres.
+      function loadLevel() {
+        try {
+          const level = Math.round(JSON.parse(localStorage.getItem(STORAGE_KEY)).level)
+          if (level >= 1 && level <= MAX_LEVEL) return level
+        } catch (e) {}
+        return 1
+      }
+      function saveLevel(level) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ level }))
+        } catch (e) {}
+      }
+
       /* ---------- Vue 3 ---------- */
       const { createApp, ref, computed, watch } = Vue
       const APP_VERSION = document.querySelector('meta[name="app-version"]').content
@@ -600,8 +626,11 @@
 
       createApp({
         setup() {
-          const level = ref(1)
-          const numColors = ref(4)
+          const level = ref(loadLevel())
+          watch(level, saveLevel)
+          // Løste baner på det nuværende niveau, siden spillet blev åbnet (gemmes ikke).
+          const solved = ref(0)
+          const levelUpNext = computed(() => level.value < MAX_LEVEL && solved.value + 1 >= BOARDS_PER_LEVEL)
           // To lag af tilstand:
           //  state: den logiske bane. Opdateres øjeblikkeligt, når et træk accepteres.
           //  tubes: det, der vises. Animationerne flytter portionerne her, lidt efter lidt.
@@ -646,15 +675,21 @@
             extraTubeUsed.value = false
           }
           function newGame() {
-            initial.value = generate(numColors.value)
+            initial.value = generate(colorsFor(level.value))
             load(initial.value)
           }
           function restart() {
             load(initial.value)
           }
-          function nextLevel() {
-            level.value++
-            if (level.value % 3 === 0 && numColors.value < 10) numColors.value++
+          function nextBoard() {
+            if (levelUpNext.value) {
+              level.value++
+              solved.value = 0
+            } else solved.value++
+            newGame()
+          }
+          function chooseLevel() {
+            solved.value = 0
             newGame()
           }
 
@@ -804,8 +839,12 @@
           newGame()
           return {
             PALETTE,
+            MAX_LEVEL,
+            BOARDS_PER_LEVEL,
+            colorsFor,
             level,
-            numColors,
+            solved,
+            levelUpNext,
             tubes,
             history,
             selected,
@@ -827,7 +866,8 @@
             addTube,
             showHint,
             newGame,
-            nextLevel,
+            nextBoard,
+            chooseLevel,
             toggleSound,
             version: APP_VERSION,
           }
