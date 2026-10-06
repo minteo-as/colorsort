@@ -435,7 +435,7 @@
       <div class="bar">
         <button @click="undo" :disabled="pending > 0 || !history.length">Fortryd</button>
         <button @click="restart" :disabled="pending > 0">Start forfra</button>
-        <button @click="addTube" :disabled="!canAddTube">Ekstra rør</button>
+        <button @click="addTube" :disabled="extraTubeUsed">Ekstra rør</button>
         <button @click="showHint">Tip</button>
         <button @click="newGame" :disabled="pending > 0">Ny bane</button>
       </div>
@@ -736,23 +736,22 @@
       })()
 
       /* ---------- Niveauer og gemt niveau ---------- */
-      // 10 niveauer med én farve mere pr. niveau: niveau 1 har 3 farver, niveau 10 har 12.
-      // Efter 3 løste baner på et niveau går man op på næste. På niveau 10 fortsætter man med
+      // 9 niveauer med én farve mere pr. niveau: niveau 1 har 3 farver, niveau 9 har 11.
+      // Efter 3 løste baner på et niveau går man op på næste. På niveau 9 fortsætter man med
       // nye baner, så længe man vil.
-      const MAX_LEVEL = 10
+      const MAX_LEVEL = 9
       const BOARDS_PER_LEVEL = 3
       const colorsFor = (level) => level + 2
-      // Højst 7 rør i bredden og 2 rækker. Niveau 10 bruger alle 14 pladser (12 farver og 2 tomme
-      // rør), så dér er der ikke plads til et ekstra rør.
+      // Højst 7 rør i bredden og 2 rækker, altså 14 rør. Niveau 9 har 11 farver og 2 tomme rør,
+      // så der er netop plads til et ekstra rør.
       const MAX_COLS = 7
       const MAX_ROWS = 2
-      const MAX_TUBES = MAX_COLS * MAX_ROWS
       const STORAGE_KEY = 'vandsortering'
       // Kun niveauet gemmes. localStorage kan være utilgængelig (fx privat browsing), så fejl ignoreres.
       function loadLevel() {
         try {
           const level = Math.round(JSON.parse(localStorage.getItem(STORAGE_KEY)).level)
-          if (level >= 1) return Math.min(level, MAX_LEVEL) // fx niveau 12 fra dengang, der var 12 niveauer
+          if (level >= 1) return Math.min(level, MAX_LEVEL) // fx niveau 12 fra dengang, der var flere niveauer
         } catch (e) {}
         return 1
       }
@@ -982,9 +981,8 @@
             selected.value = null
             hint.value = null
           }
-          const canAddTube = computed(() => !extraTubeUsed.value && tubes.value.length < MAX_TUBES)
           function addTube() {
-            if (!canAddTube.value) return
+            if (extraTubeUsed.value) return
             history.value.push(clone(state.value))
             state.value.push([])
             tubes.value.push([])
@@ -1015,7 +1013,6 @@
             solved,
             levelUpNext,
             boardLayout,
-            canAddTube,
             tubes,
             history,
             selected,

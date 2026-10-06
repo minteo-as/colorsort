@@ -30,15 +30,15 @@ Alt ligger i `index.html`:
 
 ## Funktioner
 
-Fortryd, start forfra, ekstra rør, tip, 10 niveauer med stigende sværhedsgrad, lys/mørk tilstand og respekt for reduceret bevægelse.
+Fortryd, start forfra, ekstra rør, tip, 9 niveauer med stigende sværhedsgrad, lys/mørk tilstand og respekt for reduceret bevægelse.
 
 ## Niveauer
 
-- Niveau 1–10 har én farve mere pr. niveau: niveau 1 har 3 farver, niveau 10 har 12.
+- Niveau 1–9 har én farve mere pr. niveau: niveau 1 har 3 farver, niveau 9 har 11.
 - Efter 3 løste baner på et niveau går man automatisk op på næste. Tællingen starter forfra, når spillet åbnes, og når man selv vælger et niveau.
-- På niveau 10 fortsætter man med nye baner, så længe man vil.
+- På niveau 9 fortsætter man med nye baner, så længe man vil.
 - Niveauet gemmes i `localStorage` (nøglen `vandsortering`), så man fortsætter på samme niveau næste gang.
-- Der er højst 7 rør i bredden og 2 rækker. Rørene fordeles jævnt over rækkerne og skrumper, så de passer på skærmen. Niveau 10 bruger alle 14 pladser, så dér kan man ikke få et ekstra rør.
+- Der er højst 7 rør i bredden og 2 rækker. Rørene fordeles jævnt over rækkerne og skrumper, så de passer på skærmen. Med et ekstra rør på niveau 9 er alle 14 pladser brugt.
 
 ## Versioner og releases
 
