@@ -18,4 +18,6 @@ Alt ligger i `index.html`:
 
 ## Funktioner
 
-Fortryd, start forfra, ekstra rør, tip, valg af antal farver (3–10), stigende sværhedsgrad, lys/mørk tilstand og respekt for reduceret bevægelse.
+Fortryd, start forfra, ekstra rør, tip, valg af antal farver (3–10), 12 baner med stigende sværhedsgrad, lys/mørk tilstand og respekt for reduceret bevægelse.
+
+Banen og antallet af farver gemmes i `localStorage` (nøglen `vandsortering`), så man fortsætter, hvor man slap. Efter bane 12 starter spillet forfra fra bane 1.

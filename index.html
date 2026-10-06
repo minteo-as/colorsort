@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Vandsortering – Vue 3</title>
+<title>Vandsortering</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
 <style>
@@ -110,7 +110,7 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 <body>
 <div id="app">
   <header>
-    <h1>Bane {{ level }}</h1>
+    <h1>Bane {{ level }} af {{ MAX_LEVEL }}</h1>
     <span class="meta">{{ moves }} træk</span>
   </header>
   <div class="settings">
@@ -150,8 +150,14 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
   <div class="win" v-if="won" @click="nextLevel">
     <div>
-      <h2>Løst!</h2>
-      <p>{{ moves }} træk. Tryk for næste bane.</p>
+      <template v-if="level < MAX_LEVEL">
+        <h2>Løst!</h2>
+        <p>{{ moves }} træk. Tryk for næste bane.</p>
+      </template>
+      <template v-else>
+        <h2>Alle {{ MAX_LEVEL }} baner klaret!</h2>
+        <p>{{ moves }} træk. Tryk for at starte forfra fra bane 1.</p>
+      </template>
     </div>
   </div>
 </div>
@@ -236,6 +242,23 @@ function generate(colors, empties = 2) {
   return tubes;
 }
 const clone = ts => ts.map(t => t.slice());
+
+/* ---------- Baner og gemt fremskridt ---------- */
+const MAX_LEVEL = 12;
+const START_COLORS = 4;
+const STORAGE_KEY = 'vandsortering';
+// localStorage kan være utilgængelig (fx privat browsing), så fejl ignoreres.
+function loadProgress() {
+  try {
+    const p = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const level = Math.round(p.level), colors = Math.round(p.numColors);
+    if (level >= 1 && level <= MAX_LEVEL && colors >= 3 && colors <= 10) return { level, numColors: colors };
+  } catch (e) {}
+  return { level: 1, numColors: START_COLORS };
+}
+function saveProgress(level, numColors) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ level, numColors })); } catch (e) {}
+}
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /* ---------- Lyd: syntetiseret med Web Audio API, ingen lydfiler ---------- */
@@ -326,8 +349,10 @@ const { createApp, ref, computed, watch } = Vue;
 
 createApp({
   setup() {
-    const level = ref(1);
-    const numColors = ref(4);
+    const saved = loadProgress();
+    const level = ref(saved.level);
+    const numColors = ref(saved.numColors);
+    watch([level, numColors], () => saveProgress(level.value, numColors.value));
     // To lag af tilstand:
     //  state: den logiske bane. Opdateres øjeblikkeligt, når et træk accepteres.
     //  tubes: det, der vises. Animationerne flytter portionerne her, lidt efter lidt.
@@ -368,8 +393,13 @@ createApp({
     function newGame() { initial.value = generate(numColors.value); load(initial.value); }
     function restart() { load(initial.value); }
     function nextLevel() {
-      level.value++;
-      if (level.value % 3 === 0 && numColors.value < 10) numColors.value++;
+      if (level.value >= MAX_LEVEL) {         // alle baner klaret: forfra fra bane 1
+        level.value = 1;
+        numColors.value = START_COLORS;
+      } else {
+        level.value++;
+        if (level.value % 3 === 0 && numColors.value < 10) numColors.value++;
+      }
       newGame();
     }
 
@@ -483,7 +513,7 @@ createApp({
     function toggleSound() { muted.value = !muted.value; Sound.setMuted(muted.value); }
 
     newGame();
-    return { PALETTE, level, numColors, tubes, history, selected, shaking, hint, moves,
+    return { PALETTE, MAX_LEVEL, level, numColors, tubes, history, selected, shaking, hint, moves,
              message, extraTubeUsed, won, pending, tilts, streams, muted, tubeEls, isTubeDone,
              tap, undo, restart, addTube, showHint, newGame, nextLevel, toggleSound };
   }
