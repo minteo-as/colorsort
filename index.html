@@ -63,23 +63,31 @@
       *::after {
         box-sizing: inherit;
       }
-      html,
-      body {
+      /* Safari på iPhone farver statuslinjen med sidens baggrundsfarve. En gradient giver ingen
+         farve at bruge, så statuslinjen blev hvid fra hjemmeskærmen. Derfor har <html> en
+         ensfarvet baggrund i gradientens topfarve, og gradienten ligger på body, der vokser med
+         indholdet. */
+      html {
         height: 100%;
-        margin: 0;
+        background: var(--bg);
       }
       body {
-        background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%) fixed;
+        min-height: 100%;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
         color: var(--ink);
         font-family: 'Fredoka', 'Nunito', 'Segoe UI', system-ui, sans-serif;
         -webkit-tap-highlight-color: transparent;
         overflow-x: hidden;
       }
       #app {
+        flex: 1;
+        width: 100%;
         max-width: 720px;
         margin: 0 auto;
         padding: 16px;
-        min-height: 100%;
         display: flex;
         flex-direction: column;
       }
@@ -95,8 +103,11 @@
         body {
           overflow: hidden;
         }
-        #app {
+        body {
           height: 100%;
+        }
+        #app {
+          min-height: 0;
           overflow-y: auto;
         }
       }
