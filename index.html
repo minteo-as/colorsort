@@ -82,6 +82,7 @@
         overflow-x: hidden;
       }
       #app {
+        container-type: inline-size; /* 100cqw i .board er bredden inden for #app */
         flex: 1;
         width: 100%;
         max-width: 720px;
@@ -141,17 +142,14 @@
         padding: 4px 8px;
       }
 
-      /* Højst 7 rør i bredden, fordelt jævnt over rækkerne (--cols og --rows sættes fra Vue).
-         Rørbredden (--tw) er den største, der får rækkerne til at passe i både bredden og
-         højden, dog mellem 30 og 54 px. */
+      /* Højst 7 rør i bredden og 2 rækker, fordelt jævnt (--cols og --rows sættes fra Vue).
+         Rørbredden (--tw) er højst 54 px og aldrig bredere, end at --cols rør kan stå i én række,
+         så der aldrig kommer en ekstra række. Inden for det skrumper rørene også, så rækkerne
+         passer i højden, dog ikke under 20 px (så scroller siden hellere). */
       .board {
-        --tw: clamp(
-          30px,
-          min(
-            calc((min(100vw, 720px) - 32px - (var(--cols) - 1) * 14px) / var(--cols)),
-            calc((100dvh - 350px - (var(--rows) - 1) * 34px) / (var(--rows) * 3.7))
-          ),
-          54px
+        --tw: min(
+          calc((100cqw - (var(--cols) - 1) * 14px) / var(--cols)),
+          clamp(20px, calc((100dvh - 350px - (var(--rows) - 1) * 34px) / (var(--rows) * 3.7)), 54px)
         );
         width: 100%;
         max-width: calc(var(--cols) * var(--tw) + (var(--cols) - 1) * 14px + 1px);
