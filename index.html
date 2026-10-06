@@ -29,7 +29,6 @@
         --btn-ink: #24203f;
         --accent: #6b4fd8;
         --hint: #f2b134;
-        --tw: clamp(38px, 11vw, 54px); /* rørbredde */
         --unit-ms: 200ms; /* tid pr. portion væske */
         box-sizing: border-box;
         touch-action: manipulation; /* intet dobbelttryk-zoom, når man trykker hurtigt på rørene */
@@ -142,7 +141,21 @@
         padding: 4px 8px;
       }
 
+      /* Højst 7 rør i bredden, fordelt jævnt over rækkerne (--cols og --rows sættes fra Vue).
+         Rørbredden (--tw) er den største, der får rækkerne til at passe i både bredden og
+         højden, dog mellem 30 og 54 px. */
       .board {
+        --tw: clamp(
+          30px,
+          min(
+            calc((min(100vw, 720px) - 32px - (var(--cols) - 1) * 14px) / var(--cols)),
+            calc((100dvh - 350px - (var(--rows) - 1) * 34px) / (var(--rows) * 3.7))
+          ),
+          54px
+        );
+        width: 100%;
+        max-width: calc(var(--cols) * var(--tw) + (var(--cols) - 1) * 14px + 1px);
+        align-self: center;
         position: relative; /* reference for offsetLeft/offsetTop og vandstrålen */
         flex: 1;
         display: flex;
@@ -388,7 +401,7 @@
         <button @click="toggleSound">{{ muted ? 'Slå lyd til' : 'Slå lyd fra' }}</button>
       </div>
 
-      <div class="board">
+      <div class="board" :style="boardLayout">
         <div
           v-for="(tube, i) in tubes"
           :key="i"
@@ -723,18 +736,19 @@
       })()
 
       /* ---------- Niveauer og gemt niveau ---------- */
-      // 12 niveauer med flere farver jo højere oppe. Efter 3 løste baner på et niveau går man
-      // op på næste. På niveau 12 fortsætter man med nye baner, så længe man vil.
-      const LEVEL_COLORS = [3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9, 10]
-      const MAX_LEVEL = LEVEL_COLORS.length
+      // 10 niveauer med én farve mere pr. niveau: niveau 1 har 3 farver, niveau 10 har 12.
+      // Efter 3 løste baner på et niveau går man op på næste. På niveau 10 fortsætter man med
+      // nye baner, så længe man vil.
+      const MAX_LEVEL = 10
       const BOARDS_PER_LEVEL = 3
-      const colorsFor = (level) => LEVEL_COLORS[level - 1]
+      const colorsFor = (level) => level + 2
+      const MAX_COLS = 7 // højst 7 rør i bredden
       const STORAGE_KEY = 'vandsortering'
       // Kun niveauet gemmes. localStorage kan være utilgængelig (fx privat browsing), så fejl ignoreres.
       function loadLevel() {
         try {
           const level = Math.round(JSON.parse(localStorage.getItem(STORAGE_KEY)).level)
-          if (level >= 1 && level <= MAX_LEVEL) return level
+          if (level >= 1) return Math.min(level, MAX_LEVEL) // fx niveau 12 fra dengang, der var 12 niveauer
         } catch (e) {}
         return 1
       }
@@ -791,6 +805,12 @@
           let streamId = 0
 
           const won = computed(() => pending.value === 0 && state.value.length > 0 && isSolved(state.value))
+          // Rørene fordeles jævnt over så få rækker som muligt med højst MAX_COLS i hver.
+          const boardLayout = computed(() => {
+            const n = Math.max(1, tubes.value.length)
+            const rows = Math.ceil(n / MAX_COLS)
+            return { '--cols': Math.ceil(n / rows), '--rows': rows }
+          })
           watch(won, (w) => {
             if (w) Sound.fanfare()
           })
@@ -989,6 +1009,7 @@
             level,
             solved,
             levelUpNext,
+            boardLayout,
             tubes,
             history,
             selected,
