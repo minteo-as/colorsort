@@ -435,7 +435,7 @@
       <div class="bar">
         <button @click="undo" :disabled="pending > 0 || !history.length">Fortryd</button>
         <button @click="restart" :disabled="pending > 0">Start forfra</button>
-        <button @click="addTube" :disabled="extraTubeUsed">Ekstra rør</button>
+        <button @click="addTube" :disabled="!canAddTube">Ekstra rør</button>
         <button @click="showHint">Tip</button>
         <button @click="newGame" :disabled="pending > 0">Ny bane</button>
       </div>
@@ -742,7 +742,11 @@
       const MAX_LEVEL = 10
       const BOARDS_PER_LEVEL = 3
       const colorsFor = (level) => level + 2
-      const MAX_COLS = 7 // højst 7 rør i bredden
+      // Højst 7 rør i bredden og 2 rækker. Niveau 10 bruger alle 14 pladser (12 farver og 2 tomme
+      // rør), så dér er der ikke plads til et ekstra rør.
+      const MAX_COLS = 7
+      const MAX_ROWS = 2
+      const MAX_TUBES = MAX_COLS * MAX_ROWS
       const STORAGE_KEY = 'vandsortering'
       // Kun niveauet gemmes. localStorage kan være utilgængelig (fx privat browsing), så fejl ignoreres.
       function loadLevel() {
@@ -805,10 +809,10 @@
           let streamId = 0
 
           const won = computed(() => pending.value === 0 && state.value.length > 0 && isSolved(state.value))
-          // Rørene fordeles jævnt over så få rækker som muligt med højst MAX_COLS i hver.
+          // Rørene fordeles jævnt over én eller to rækker med højst MAX_COLS i hver.
           const boardLayout = computed(() => {
             const n = Math.max(1, tubes.value.length)
-            const rows = Math.ceil(n / MAX_COLS)
+            const rows = Math.min(MAX_ROWS, Math.ceil(n / MAX_COLS))
             return { '--cols': Math.ceil(n / rows), '--rows': rows }
           })
           watch(won, (w) => {
@@ -978,8 +982,9 @@
             selected.value = null
             hint.value = null
           }
+          const canAddTube = computed(() => !extraTubeUsed.value && tubes.value.length < MAX_TUBES)
           function addTube() {
-            if (extraTubeUsed.value) return
+            if (!canAddTube.value) return
             history.value.push(clone(state.value))
             state.value.push([])
             tubes.value.push([])
@@ -1010,6 +1015,7 @@
             solved,
             levelUpNext,
             boardLayout,
+            canAddTube,
             tubes,
             history,
             selected,

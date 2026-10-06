@@ -38,7 +38,7 @@ Fortryd, start forfra, ekstra rør, tip, 10 niveauer med stigende sværhedsgrad,
 - Efter 3 løste baner på et niveau går man automatisk op på næste. Tællingen starter forfra, når spillet åbnes, og når man selv vælger et niveau.
 - På niveau 10 fortsætter man med nye baner, så længe man vil.
 - Niveauet gemmes i `localStorage` (nøglen `vandsortering`), så man fortsætter på samme niveau næste gang.
-- Der er højst 7 rør i bredden. Rørene fordeles jævnt over rækkerne, og rørene skrumper, så rækkerne passer på skærmen.
+- Der er højst 7 rør i bredden og 2 rækker. Rørene fordeles jævnt over rækkerne og skrumper, så de passer på skærmen. Niveau 10 bruger alle 14 pladser, så dér kan man ikke få et ekstra rør.
 
 ## Versioner og releases
 
