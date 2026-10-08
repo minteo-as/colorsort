@@ -87,3 +87,16 @@ Tags, der pushes fra kommandolinjen, laver ikke en release.
 ## CI
 
 `.github/workflows/ci.yml` kører ved hver push til `main` og ved hver pull request: den tjekker formateringen (Prettier), kører testene og `npm run build`. Den byggede `dist/` gemmes som en zip-fil på workflow-kørslen i 30 dage (`colorsort-dist-<commit>`), så man kan hente og afprøve en bestemt version uden at lave en release.
+
+## Prototyper
+
+`prototyper/vandsortering-3d.html` er spillet i 3D med [three.js](https://threejs.org). Den er ikke en del af det udgivne spil og kommer ikke med i `dist/` eller release-zip'en. Åbn filen i en browser (three.js hentes fra jsDelivr, så det kræver internet).
+
+- Spillogikken, banegeneratoren, løseren og lyden er kopieret uændret fra `index.html`; kun visningen er ny. Ændres logikken i `index.html`, skal kopien rettes med.
+- Glasset bryder lyset (`MeshPhysicalMaterial` med `transmission`), og spejlingerne kommer fra three.js' indbyggede `RoomEnvironment` – ingen billedfiler.
+- Væsken følger fysikken: overfladen er altid vandret, røret vippes, til væsken når mundingen, og vinklen regnes ud fra rumfanget, så netop det øverste farvelag løber ud. Rumfang måles med faste prøvepunkter i rørets indre, og hvert farvelag tegnes som rørets indre klippet mellem to vandrette planer.
+- Scenen tegnes kun, når noget bevæger sig, så den ikke bruger strøm, når man tænker.
+- Smalt synsfelt på lang afstand, så begge rækker ses fra næsten samme vinkel.
+- Pakket og minificeret fylder prototypen med three.js ca. 146 KB komprimeret (Vue, som spillet bruger, ca. 53 KB).
+
+Kendte begrænsninger: kun én hældning ad gangen, intet "Ekstra rør", og rørene kan ikke vælges med tastaturet.
