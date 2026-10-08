@@ -431,7 +431,6 @@
       /* ---------- 3D med three.js ---------- */
       import * as THREE from 'three'
       import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
-      import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 
       const dark = matchMedia('(prefers-color-scheme: dark)').matches
       const canvas = document.getElementById('scene')
@@ -587,7 +586,6 @@
       const streamGeometry = new THREE.CylinderGeometry(0.035, 0.035, 1, 12).translate(0, -0.5, 0)
 
       /* --- Animation: tweens og "tegn kun når noget bevæger sig" --- */
-      let active = 0 // kørende tweens
       let needsRender = true
       const invalidate = () => (needsRender = true)
       const tweens = new Set()
@@ -1042,6 +1040,8 @@
         win: document.getElementById('win'),
       }
       let level = loadLevel()
+      // Løste baner på det nuværende niveau, siden spillet blev åbnet (gemmes ikke) – som i index.html.
+      let solved = 0
       let state = [],
         initial = [],
         history = [],
@@ -1052,8 +1052,9 @@
       const UNIT_MS = 260
 
       function render() {
-        ui.title.textContent = 'Niveau ' + level
-        ui.moves.textContent = moves + ' træk'
+        ui.title.textContent = `Niveau ${level} af ${MAX_LEVEL}`
+        const board = `Bane ${solved + 1}` + (level < MAX_LEVEL ? ` af ${BOARDS_PER_LEVEL}` : '')
+        ui.moves.textContent = `${board} · ${moves} træk`
         ui.undo.disabled = busy || !history.length
       }
       function load(ts) {
@@ -1236,8 +1237,12 @@
       }
       ui.win.onclick = () => {
         ui.win.hidden = true
-        level = Math.min(MAX_LEVEL, level + 1)
-        saveLevel(level)
+        // Op på næste niveau efter BOARDS_PER_LEVEL løste baner, ligesom nextBoard() i index.html.
+        if (level < MAX_LEVEL && solved + 1 >= BOARDS_PER_LEVEL) {
+          level++
+          solved = 0
+          saveLevel(level)
+        } else solved++
         newGame()
       }
 
