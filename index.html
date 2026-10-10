@@ -436,6 +436,11 @@
           setMuted(m) {
             muted = m
           },
+          // Opret lydsystemet og efterklangen på forhånd, så det ikke koster tid midt i en bevægelse.
+          prepare() {
+            const c = get()
+            if (c) room(c)
+          },
           clink() {
             // glas der rører hinanden
             const c = get()
@@ -686,6 +691,8 @@
       const ringGeometry = new THREE.TorusGeometry(R + T + 0.07, 0.022, 10, 48).rotateX(Math.PI / 2)
       const colliderGeometry = new THREE.CylinderGeometry(SPX * 0.47, SPX * 0.47, H + 0.6, 12)
       const streamGeometry = new THREE.CylinderGeometry(0.035, 0.035, 1, 12).translate(0, -0.5, 0)
+      const shelfGeometry = new THREE.BoxGeometry(1, 0.14, 1.3) // strækkes i bredden til hver hylde
+      const colliderMat = new THREE.MeshBasicMaterial({ visible: false }) // rammes af tryk, men tegnes ikke
 
       /* --- Animation: tweens og "tegn kun når noget bevæger sig" --- */
       let needsRender = true
@@ -747,7 +754,6 @@
         go.len = length
         return go
       }
-      const easeOut = (t) => 1 - (1 - t) * (1 - t)
 
       /* --- Partikler: én lille shader til bobler, plask og konfetti --- */
       const particleMaterial = new THREE.ShaderMaterial({
@@ -927,7 +933,7 @@
         const ring = new THREE.Mesh(ringGeometry, hintFromMat)
         ring.position.y = H + 0.05
         ring.visible = false
-        const collider = new THREE.Mesh(colliderGeometry, new THREE.MeshBasicMaterial({ visible: false }))
+        const collider = new THREE.Mesh(colliderGeometry, colliderMat)
         collider.position.y = H / 2
         collider.userData.tube = i
         body.add(glassMesh, ring, collider)
@@ -949,6 +955,9 @@
       }
 
       function buildScene(ts) {
+        // three.js frigiver ikke selv det, der ligger på grafikkortet. Rør, hylder, propper og ringe
+        // deler former og materialer, så kun farvelagenes egne materialer skal frigives her.
+        for (const t of tubes3d) setLayers(t, [])
         scene.remove(world)
         world = new THREE.Group()
         scene.add(world)
@@ -971,7 +980,8 @@
           const inRow = Math.floor(n / rows) + (r < n % rows ? 1 : 0)
           const y = (rows - 1 - r) * ROW_GAP
           const z = (rows - 1 - r) * ROW_DEPTH
-          const shelf = new THREE.Mesh(new THREE.BoxGeometry((perRow - 1) * SPX + 1.3, 0.14, 1.3), shelfMat)
+          const shelf = new THREE.Mesh(shelfGeometry, shelfMat)
+          shelf.scale.x = (perRow - 1) * SPX + 1.3
           shelf.position.set(0, y - 0.07, z + 0.15)
           shelf.receiveShadow = true
           world.add(shelf)
@@ -1392,7 +1402,7 @@
       // rutens punkt nr. `a` og `b`.
       function travel(t, points, dir, tilt, a, b) {
         const go = route(points)
-        const ms = Math.min(950, 300 + 130 * go.len)
+        const ms = Math.min(720, 230 + 100 * go.len)
         return tween(ms, (k) => {
           const at = go(k, t.pivot.position)
           t.pivot.rotation.z = -dir * tilt * ease(THREE.MathUtils.clamp((at - a) / (b - a), 0, 1))
@@ -1622,6 +1632,9 @@
         get state() {
           return state
         },
+        get programs() {
+          return renderer.info.programs.length // antal oversatte shadere
+        },
         get busy() {
           return pending > 0
         },
@@ -1655,9 +1668,50 @@
 
       // Service workeren gemmer spillets filer, så det kan spilles uden forbindelse (se sw.js).
       // Den kan ikke bruges, når index.html åbnes direkte som fil; så springes den bare over.
-      if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {})
+      // Den starter først, når siden er hentet færdig, så den ikke konkurrerer med opstarten.
+      if ('serviceWorker' in navigator) {
+        const register = () => navigator.serviceWorker.register('sw.js').catch(() => {})
+        if (document.readyState === 'complete') register()
+        else addEventListener('load', register)
+      }
+      // Lydsystemet oprettes, idet fingeren sættes ned første gang – ikke midt i det første løft.
+      for (const type of ['pointerdown', 'keydown'])
+        addEventListener(type, () => Sound.prepare(), { once: true, capture: true })
+
+      // three.js oversætter først en shader, den første gang noget tegnes med den, og det tager så
+      // lang tid, at spillet hakkede, første gang der blev hældt (stråle, bobler og plask), sat en prop
+      // i og vist et tip. Derfor tegnes det hele én gang i det skjulte, inden spillet går i gang.
+      function warmUp() {
+        const group = new THREE.Group()
+        for (const [geometry, material] of [
+          [streamGeometry, liquidMaterial(0)],
+          [corkGeometry, corkMat],
+          [ringGeometry, hintFromMat],
+          [ringGeometry, hintToMat],
+        ]) {
+          const mesh = new THREE.Mesh(geometry, material)
+          mesh.castShadow = material === corkMat
+          mesh.frustumCulled = false
+          mesh.scale.setScalar(1e-4) // for småt til at kunne ses
+          group.add(mesh)
+        }
+        scene.add(group)
+        particles.emit({ pos: new V3(), vel: new V3(), life: 1, size: 0, color: new THREE.Color(), alpha: 0 })
+        particles.update(0)
+        renderer.render(scene, camera)
+        // Skyggen af et farvelag, der er lavet EFTER det første billede, får sin egen shader (three.js
+        // regner lysene med fra andet billede). Det sker ellers først, når der hældes i et rør med en
+        // anden farve øverst. Derfor laves lagene om og tegnes én gang til.
+        tubes3d.forEach((t, i) => setLayers(t, shown[i]))
+        renderer.render(scene, camera)
+        scene.remove(group)
+        particles.list = []
+        particles.update(0)
+        invalidate()
+      }
 
       newGame()
+      warmUp()
       loop()
     </script>
   </body>
