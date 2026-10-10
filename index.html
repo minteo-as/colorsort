@@ -314,6 +314,11 @@
           const k = key(ts)
           if (seen.has(k)) return false
           seen.add(k)
+          // Træk, hvor hele det øverste farvestykke kan være i målet, prøves først. Et delvist træk
+          // (fx 3 gule over i et rør med plads til 2) kan hældes lige tilbage igen og fører sjældent
+          // nogen vegne, så løsningerne bliver kortere, når de kun bruges som sidste udvej.
+          const whole = [],
+            partial = []
           for (let a = 0; a < ts.length; a++) {
             const s = ts[a]
             if (!s.length || isTubeDone(s)) continue
@@ -324,14 +329,17 @@
                 if (triedEmpty || topRun(s) === s.length) continue
                 triedEmpty = true
               }
-              const next = ts.map((t) => t.slice())
-              pour(next, a, b)
-              path.push([a, b])
-              const r = dfs(next)
-              if (r) return true
-              if (r === null) return null
-              path.pop()
+              ;(topRun(s) <= CAP - ts[b].length ? whole : partial).push([a, b])
             }
+          }
+          for (const [a, b] of whole.concat(partial)) {
+            const next = ts.map((t) => t.slice())
+            pour(next, a, b)
+            path.push([a, b])
+            const r = dfs(next)
+            if (r) return true
+            if (r === null) return null
+            path.pop()
           }
           return false
         }
@@ -359,6 +367,20 @@
       }
       const clone = (ts) => ts.map((t) => t.slice())
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+      // Tip følger én plan. Løseren finder en løsning, og så længe spilleren følger tippene, kommer
+      // næste tip fra samme plan. Blev der søgt forfra efter hvert træk, kunne to tip pege frem og
+      // tilbage mellem de samme to rør. En plan er { state, path }: path er løserens svar for state.
+      const sameBoard = (x, y) => x.length === y.length && x.every((t, i) => t.join() === y[i].join())
+      function planFor(plan, ts) {
+        if (plan && sameBoard(plan.state, ts)) return plan
+        return { state: clone(ts), path: solve(ts) }
+      }
+      // Er trækket a → b fra banen ts planens næste trin? Så er resten af planen svaret på næste tip.
+      function planRest(plan, ts, a, b) {
+        const next = plan && plan.path && plan.path[0]
+        return next && next[0] === a && next[1] === b && sameBoard(plan.state, ts) ? plan.path.slice(1) : null
+      }
 
       /* ---------- Lyd: syntetiseret med Web Audio API, ingen lydfiler ---------- */
       const Sound = (() => {
@@ -1281,6 +1303,7 @@
         moves = 0,
         selected = null,
         extraTubeUsed = false,
+        plan = null, // løsningen, Tip følger – se planFor()
         pending = 0, // antal hældninger, der endnu ikke er animeret færdig
         muted = false
       // Kø pr. rør. At hælde UD kræver eneret over røret. Et rør kan MODTAGE fra ét rør ad gangen:
@@ -1544,7 +1567,9 @@
         // Trækket valideres og udføres på den logiske tilstand med det samme ...
         history.push(clone(state))
         const color = peek(state[from])
+        const rest = planRest(plan, state, from, i)
         const n = pour(state, from, i)
+        if (rest) plan = { state: clone(state), path: rest }
         moves++
         pending++
         // ... og animationen sættes i kø:
@@ -1608,7 +1633,8 @@
         e.target.textContent = muted ? 'Slå lyd til' : 'Slå lyd fra'
       }
       document.getElementById('hint').onclick = () => {
-        const r = solve(state)
+        plan = planFor(plan, state)
+        const r = plan.path
         mark(r && r.length ? r[0] : null)
         if (r && r.length)
           ui.msg.textContent = `Hæld fra rør ${r[0][0] + 1} (gul ring) til rør ${r[0][1] + 1} (lilla ring).`
