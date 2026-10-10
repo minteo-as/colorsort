@@ -1,10 +1,10 @@
 # colorsort
 
-Et vandsorteringsspil i browseren, bygget med Vue 3. Hæld farverne mellem rørene, indtil hvert rør kun indeholder én farve.
+Et vandsorteringsspil i browseren, tegnet i 3D med [three.js](https://threejs.org). Hæld farverne mellem rørene, indtil hvert rør kun indeholder én farve.
 
 ## Kør spillet
 
-Åbn `index.html` i en browser. Der er intet build-step: Vue 3 hentes fra cdnjs og skrifttypen fra Google Fonts.
+Åbn `index.html` i en browser. Der er intet build-step: three.js hentes fra jsDelivr og skrifttypen fra Google Fonts.
 
 Til udvikling (Node 22):
 
@@ -19,26 +19,40 @@ Den eneste afhængighed er Prettier. Spillet selv har intet build-step.
 
 ## Opbygning
 
-Alt ligger i `index.html`:
+Spillet ligger i `index.html`, og `sw.js` gør, at det kan spilles uden forbindelse.
 
-- **Spillogik** (ren JavaScript, uafhængig af Vue): `canPour`, `pour`, `isSolved`.
+- **Spillogik** (ren JavaScript, uafhængig af visningen): `canPour`, `pour`, `isSolved`.
 - **Solver**: dybde-først-søgning med besøgte tilstande. Bruges til at sikre, at nye baner kan løses, og til Tip-knappen.
-- **To lag af tilstand**: `state` er den logiske bane og opdateres med det samme; `tubes` er det, der vises, og indhentes af animationerne.
-- **Animationskø pr. rør**: at hælde ud kræver eneret over røret, mens flere rør kan hælde ned i samme rør samtidig (en læse/skrive-lås).
+- **To lag af tilstand**: `state` er den logiske bane og opdateres med det samme; `shown` er det, der vises, og indhentes af animationerne.
+- **Animationskø pr. rør**: at hælde ud kræver eneret over røret. Flere rør kan hælde samtidig; hælder to i samme rør, venter det andet, til strålen fra det første er stoppet.
+- **Glas**: `MeshPhysicalMaterial` med `transmission` bryder lyset, og spejlingerne kommer fra three.js' indbyggede `RoomEnvironment` – ingen billedfiler.
+- **Væske med fysik**: overfladen er altid vandret. Røret vippes, til væsken når mundingen, og vinklen regnes ud fra rumfanget, så netop det øverste farvelag løber ud. Rumfang måles med faste prøvepunkter i rørets indre, og hvert farvelag tegnes som rørets indre klippet mellem to vandrette planer.
+- **Hældningen**: røret trækkes frem foran sin række, flyttes hen foran målet og hælder skråt forfra, så det aldrig går gennem de andre rør.
+- **Kamera**: smalt synsfelt på lang afstand, så alle rækker ses fra næsten samme vinkel. Scenen kan drejes lidt med fingeren og glider tilbage. Den tegnes kun, når noget bevæger sig, så spillet ikke bruger strøm, mens man tænker.
 - **Lyd**: syntetiseret med Web Audio API, uden lydfiler. Hældelyden er en regn af bobler efter van den Doels fysiske model af væskelyde: hver boble er en kort sinustone, der dør hurtigt ud og stiger lidt i tone, og tonen afhænger af boblens størrelse. Tonen stiger, mens røret fyldes, og en kort efterklang får det til at lyde, som om vandet er inde i røret.
-- **Skvulp**: røret, der modtager, gynger let, mens der hældes, og skvulper et par gange, inden væsken falder til ro (CSS-animationer, slået fra ved reduceret bevægelse).
+- **Tastatur og skærmlæser**: oven på hvert rør ligger en usynlig knap, som kan vælges med tastaturet, og som læser rørets indhold op ("Rør 3, fra toppen: blå, lyserød, orange").
+- **Reduceret bevægelse**: rørene flyver ikke hen og hælder; portionerne flyttes bare, og der er ingen konfetti.
 
 ## Funktioner
 
-Fortryd, start forfra, ekstra rør, tip, 9 niveauer med stigende sværhedsgrad, lys/mørk tilstand og respekt for reduceret bevægelse.
+Fortryd, start forfra, ekstra rør, tip, 10 niveauer med stigende sværhedsgrad, lys/mørk tilstand, respekt for reduceret bevægelse, og spillet kan lægges på hjemmeskærmen og spilles uden forbindelse.
 
 ## Niveauer
 
-- Niveau 1–9 har én farve mere pr. niveau: niveau 1 har 3 farver, niveau 9 har 11.
+- Niveau 1–10 har én farve mere pr. niveau: niveau 1 har 3 farver, niveau 10 har 12.
 - Efter 3 løste baner på et niveau går man automatisk op på næste. Tællingen starter forfra, når spillet åbnes, og når man selv vælger et niveau.
-- På niveau 9 fortsætter man med nye baner, så længe man vil.
+- På niveau 10 fortsætter man med nye baner, så længe man vil.
 - Niveauet gemmes i `localStorage` (nøglen `vandsortering`), så man fortsætter på samme niveau næste gang.
-- Der er højst 7 rør i bredden og 2 rækker. Rørene fordeles jævnt over rækkerne og skrumper, så de passer på skærmen. Med et ekstra rør på niveau 9 er alle 14 pladser brugt.
+- Der er højst 7 rør i bredden og 3 rækker. Antallet af rækker vælges, så rørene bliver størst muligt på skærmen, og siden kan ikke scrolle. Med et ekstra rør på niveau 10 er der 15 rør.
+
+## Uden forbindelse
+
+`sw.js` er en service worker, der gemmer spillets filer, første gang det åbnes med forbindelse: siden selv, manifestet, ikonerne, three.js fra jsDelivr og skrifttypen fra Google Fonts. Derefter kan spillet åbnes og spilles uden forbindelse.
+
+- På iPhone har et spil på hjemmeskærmen sit eget lager, adskilt fra Safari. Spillet skal derfor åbnes én gang **fra hjemmeskærmen** med forbindelse, før det virker uden.
+- Sidens egne filer hentes altid fra serveren, når der er forbindelse, så en ny version slår igennem med det samme. Det gemte bruges kun, når serveren ikke kan nås.
+- Adresserne på three.js og skrifttypen står både i `index.html` og i `sw.js`. `scripts/offline.test.mjs` tjekker, at de passer sammen. Ændres listen i `sw.js`, skal lageret have et nyt navn (`CACHE`).
+- Service workeren virker ikke, når `index.html` åbnes direkte som fil; spillet virker stadig, men kun med forbindelse.
 
 ## Versioner og releases
 
@@ -69,7 +83,7 @@ Derefter:
 
 Fejler noget, før zip-filen er lagt op, sættes releasen tilbage til **kladde** (draft), og fejlen står i workflow-kørslen. Ret fejlen, og udgiv kladden igen (eventuelt med et andet tag).
 
-Zip-filen pakkes ud direkte på webserveren. Den indeholder `index.html`, `manifest.webmanifest`, `icons/` og `.htaccess` (cache-regler til Apache).
+Zip-filen pakkes ud direkte på webserveren. Den indeholder `index.html`, `sw.js`, `manifest.webmanifest`, `icons/` og `.htaccess` (cache-regler til Apache).
 
 ## Ikon
 
@@ -87,18 +101,3 @@ Tags, der pushes fra kommandolinjen, laver ikke en release.
 ## CI
 
 `.github/workflows/ci.yml` kører ved hver push til `main` og ved hver pull request: den tjekker formateringen (Prettier), kører testene og `npm run build`. Den byggede `dist/` gemmes som en zip-fil på workflow-kørslen i 30 dage (`colorsort-dist-<commit>`), så man kan hente og afprøve en bestemt version uden at lave en release.
-
-## Prototyper
-
-`prototyper/vandsortering-3d.html` er spillet i 3D med [three.js](https://threejs.org). Den er ikke en del af det udgivne spil og kommer ikke med i `dist/` eller release-zip'en. Åbn filen i en browser (three.js hentes fra jsDelivr, så det kræver internet).
-
-- Spillogikken, banegeneratoren, løseren og lyden er kopieret uændret fra `index.html`; kun visningen er ny. Ændres logikken i `index.html`, skal kopien rettes med.
-- Glasset bryder lyset (`MeshPhysicalMaterial` med `transmission`), og spejlingerne kommer fra three.js' indbyggede `RoomEnvironment` – ingen billedfiler.
-- Væsken følger fysikken: overfladen er altid vandret, røret vippes, til væsken når mundingen, og vinklen regnes ud fra rumfanget, så netop det øverste farvelag løber ud. Rumfang måles med faste prøvepunkter i rørets indre, og hvert farvelag tegnes som rørets indre klippet mellem to vandrette planer.
-- Scenen tegnes kun, når noget bevæger sig, så den ikke bruger strøm, når man tænker.
-- Smalt synsfelt på lang afstand, så alle rækker ses fra næsten samme vinkel.
-- Et rør, der skal hælde, trækkes frem foran sin række, flyttes hen foran målet og hælder skråt forfra, så det aldrig går gennem de andre rør. Flere rør kan hælde samtidig; hælder to i samme rør, venter det andet, til strålen fra det første er stoppet.
-- Afviger fra spillet: op til 3 rækker (antallet vælges, så rørene bliver størst muligt på skærmen; siden kan ikke scrolle) og 10 niveauer, så niveau 10 bruger alle 12 farver.
-- Pakket og minificeret fylder prototypen med three.js ca. 146 KB komprimeret (Vue, som spillet bruger, ca. 53 KB).
-
-Kendte begrænsninger: rørene kan ikke vælges med tastaturet eller læses af en skærmlæser.

@@ -17,441 +17,251 @@
     <meta name="theme-color" content="#1d1934" media="(prefers-color-scheme: dark)" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet" />
+    <!-- three.js hentes fra jsDelivr. Den minificerede three.module.min.js henter selv den uminificerede
+         three.core.js; den sidste linje peger den om til den minificerede kerne, så der i alt hentes ca.
+         halvt så meget. Importmap'en skal stå før alt, der henter moduler – også modulepreload herunder –
+         ellers bliver omdirigeringen ignoreret. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.min.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/",
+          "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.core.js": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.core.min.js"
+        }
+      }
+    </script>
+    <!-- Filerne hentes på forhånd, side om side. -->
+    <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.min.js" />
+    <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.core.min.js" />
     <style>
       :root {
         --bg: #e6e9f2;
         --bg2: #cfd5e6;
         --ink: #24203f;
         --muted: #5d5a78;
-        --glass: rgba(255, 255, 255, 0.55);
-        --rim: #8c90a8;
         --btn: #ffffff;
-        --btn-ink: #24203f;
+        --rim: #8c90a8;
         --accent: #6b4fd8;
-        --hint: #f2b134;
-        --unit-ms: 200ms; /* tid pr. portion væske */
-        box-sizing: border-box;
+        color-scheme: light dark;
         touch-action: manipulation; /* intet dobbelttryk-zoom, når man trykker hurtigt på rørene */
       }
       @media (prefers-color-scheme: dark) {
-        :root:not([data-theme='light']) {
+        :root {
           --bg: #1d1934;
           --bg2: #3a1f3f;
           --ink: #efeaff;
           --muted: #a59fc6;
-          --glass: rgba(255, 255, 255, 0.06);
-          --rim: #b3b0c4;
           --btn: #2e2952;
-          --btn-ink: #efeaff;
+          --rim: #b3b0c4;
           --accent: #a48cff;
         }
       }
-      :root[data-theme='dark'] {
-        --bg: #1d1934;
-        --bg2: #3a1f3f;
-        --ink: #efeaff;
-        --muted: #a59fc6;
-        --glass: rgba(255, 255, 255, 0.06);
-        --rim: #b3b0c4;
-        --btn: #2e2952;
-        --btn-ink: #efeaff;
-        --accent: #a48cff;
-      }
-      *,
-      *::before,
-      *::after {
-        box-sizing: inherit;
-      }
-      /* Safari på iPhone farver statuslinjen med sidens baggrundsfarve. En gradient giver ingen
-         farve at bruge, så statuslinjen blev hvid fra hjemmeskærmen. Derfor har <html> en
-         ensfarvet baggrund i gradientens topfarve, og gradienten ligger på body, der vokser med
-         indholdet. */
-      html {
+      html,
+      body {
         height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+      /* Safari på iPhone farver statuslinjen og værktøjslinjen med sidens baggrundsfarve. En gradient
+         giver ingen farve at bruge, så de blev hvide. Derfor har <html> en ensfarvet baggrund i
+         gradientens topfarve. */
+      html {
         background: var(--bg);
       }
       body {
-        min-height: 100%;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
         background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
         color: var(--ink);
         font-family: 'Fredoka', 'Nunito', 'Segoe UI', system-ui, sans-serif;
-        -webkit-tap-highlight-color: transparent;
-        overflow-x: hidden;
-      }
-      #app {
-        container-type: inline-size; /* 100cqw i .board er bredden inden for #app */
-        flex: 1;
-        width: 100%;
-        max-width: 720px;
-        margin: 0 auto;
-        padding: 16px;
         display: flex;
         flex-direction: column;
-      }
-      /* Fra hjemmeskærmen på iPhone farver Safari statuslinjen ud fra toppen af siden:
-   - Scroller selve siden, slører Safari toppen, når indhold scroller ind under statuslinjen.
-   - Ligger der et fast element ved kanten, får statuslinjen dets farve, når siden indlæses,
-     og følger ikke med bagefter.
-   Derfor scroller selve siden aldrig, #app scroller indeni, og der er intet fast element ved
-   kanten, når siden indlæses. Så følger statuslinjen med siden. Statuslinjen giver selv luft
-   over indholdet. I browseren er intet ændret. */
-      @media screen and (display-mode: standalone) {
-        html,
-        body {
-          overflow: hidden;
-        }
-        body {
-          height: 100%;
-        }
-        #app {
-          min-height: 0;
-          overflow-y: auto;
-        }
+        -webkit-tap-highlight-color: transparent;
       }
       header {
+        padding: 14px 16px 0;
+        max-width: 720px;
+        width: 100%;
+        margin: 0 auto;
+        box-sizing: border-box;
+      }
+      .top {
         display: flex;
-        align-items: baseline;
         justify-content: space-between;
-        gap: 12px;
-      }
-      h1 {
-        font-size: 1.6rem;
-        font-weight: 600;
-        margin: 0;
-      }
-      .meta {
-        color: var(--muted);
-        font-size: 0.95rem;
+        align-items: baseline;
       }
       .settings {
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        gap: 8px;
+        gap: 12px;
         margin-top: 8px;
         color: var(--muted);
+        white-space: nowrap;
+      }
+      .settings button {
+        padding: 6px 10px;
       }
       select {
         font: inherit;
-        color: var(--btn-ink);
+        color: var(--ink);
         background: var(--btn);
-        border: 1px solid var(--rim);
-        border-radius: 8px;
-        padding: 4px 8px;
+        border: 2px solid var(--rim);
+        border-radius: 10px;
+        padding: 5px 8px;
       }
-
-      /* Højst 7 rør i bredden og 2 rækker, fordelt jævnt (--cols og --rows sættes fra Vue).
-         Rørbredden (--tw) er højst 54 px og aldrig bredere, end at --cols rør kan stå i én række,
-         så der aldrig kommer en ekstra række. Inden for det skrumper rørene også, så rækkerne
-         passer i højden, dog ikke under 20 px (så scroller siden hellere). */
-      .board {
-        --tw: min(
-          calc((100cqw - (var(--cols) - 1) * 14px) / var(--cols)),
-          clamp(20px, calc((100dvh - 350px - (var(--rows) - 1) * 34px) / (var(--rows) * 3.7)), 54px)
-        );
+      h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+      }
+      .meta {
+        color: var(--muted);
+      }
+      canvas {
+        position: fixed;
+        inset: 0;
         width: 100%;
-        max-width: calc(var(--cols) * var(--tw) + (var(--cols) - 1) * 14px + 1px);
-        align-self: center;
-        position: relative; /* reference for offsetLeft/offsetTop og vandstrålen */
-        flex: 1;
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        align-content: center;
-        gap: 34px 14px;
-        padding: 60px 0 24px;
+        height: 100%;
+        outline: none;
+        touch-action: none;
       }
-      .tube {
-        width: var(--tw);
-        height: calc(var(--tw) * 3.7);
-        position: relative;
-        cursor: pointer;
-        border: 3px solid var(--rim);
-        border-top: none;
-        border-radius: 0 0 calc(var(--tw) / 2) calc(var(--tw) / 2);
-        background: var(--glass);
-        overflow: hidden;
-        transform-origin: 50% 0; /* der drejes om mundingen */
-        transition: transform 0.18s ease;
-      }
-      .tube::before {
-        /* glans */
-        content: '';
-        position: absolute;
-        left: 18%;
-        top: 14px;
-        bottom: 18px;
-        width: 9%;
-        border-radius: 3px;
-        background: rgba(255, 255, 255, 0.28);
-        z-index: 2;
-        pointer-events: none;
-      }
-      .tube::after {
-        /* kant */
-        content: '';
-        position: absolute;
+      header,
+      .bottom {
+        position: fixed;
         left: 0;
         right: 0;
+        z-index: 1;
+        pointer-events: none;
+      }
+      header {
         top: 0;
-        height: 4px;
-        background: var(--rim);
-        z-index: 3;
+        left: 50%;
+        transform: translateX(-50%);
       }
-      .liquid {
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: 18px;
+      .bottom {
         bottom: 0;
-        display: flex;
-        flex-direction: column-reverse;
       }
-      .seg {
-        height: 25%;
-        flex: 0 0 auto;
+      button,
+      label {
+        pointer-events: auto;
       }
-      /* Skvulp i røret, der modtager: hele væskesøjlen vipper om bunden, så overfladen og
-         skillelinjerne mellem farverne skråner frem og tilbage. --dir er den side, strålen
-         kommer fra. Mens der hældes, gynger væsken; bagefter dør bevægelsen ud. */
-      .liquid.slosh-pour,
-      .liquid.slosh-settle {
-        transform-origin: 50% 100%;
-      }
-      .liquid.slosh-pour {
-        animation: slosh-pour 0.5s ease-in-out infinite;
-      }
-      .liquid.slosh-settle {
-        animation: slosh-settle 0.9s ease-out;
-      }
-      @keyframes slosh-pour {
-        0%,
-        100% {
-          transform: skewY(0deg);
-        }
-        30% {
-          transform: skewY(calc(var(--dir) * 5deg));
-        }
-        70% {
-          transform: skewY(calc(var(--dir) * -4deg));
-        }
-      }
-      @keyframes slosh-settle {
-        0% {
-          transform: skewY(0deg);
-        }
-        20% {
-          transform: skewY(calc(var(--dir) * -8deg));
-        }
-        42% {
-          transform: skewY(calc(var(--dir) * 6deg));
-        }
-        62% {
-          transform: skewY(calc(var(--dir) * -3.5deg));
-        }
-        80% {
-          transform: skewY(calc(var(--dir) * 1.5deg));
-        }
-        100% {
-          transform: skewY(0deg);
-        }
-      }
-      /* Vue <transition-group>: portioner vokser ind og drænes ud */
-      .liq-enter-active,
-      .liq-leave-active {
-        transition: height var(--unit-ms) linear;
-      }
-      .liq-enter-from,
-      .liq-leave-to {
-        height: 0;
-      }
-
-      .tube:focus-visible {
-        outline: 3px solid var(--accent);
-        outline-offset: 4px;
-      }
-      .tube.selected {
-        transform: translateY(-22px);
-      }
-      .tube.hint-from,
-      .tube.hint-to {
-        box-shadow: 0 0 0 4px var(--hint);
-      }
-      .tube.shake {
-        animation: shake 0.3s;
-      }
-      .tube.done {
-        border-color: var(--accent);
-      }
-      @keyframes shake {
-        25% {
-          transform: translateX(-5px);
-        }
-        75% {
-          transform: translateX(5px);
-        }
-      }
-
-      .stream {
-        position: absolute;
-        width: 6px;
-        border-radius: 3px;
-        z-index: 4;
+      /* Usynlige knapper oven på rørene, så de kan vælges med tastaturet og læses af en skærmlæser.
+         Mus og fingre går igennem til lærredet, så scenen stadig kan drejes. */
+      .tubes button {
+        position: fixed;
+        z-index: 1;
+        padding: 0;
+        border: 0;
+        border-radius: 14px;
+        background: none;
         pointer-events: none;
-        transform-origin: top;
-        animation: streamIn 0.12s ease-out;
       }
-      @keyframes streamIn {
-        from {
-          transform: scaleY(0);
-        }
-        to {
-          transform: scaleY(1);
-        }
+      .tubes button:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
       }
-
+      .msg {
+        text-align: center;
+        min-height: 1.4em;
+        margin: 0 0 6px;
+        color: var(--muted);
+      }
       .bar {
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        gap: 10px;
-        padding-bottom: 8px;
+        gap: 6px;
+        padding: 0 10px;
+      }
+      .version {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.8rem;
+        min-height: 14px;
+        margin: 4px 0;
       }
       button {
         font: inherit;
         font-weight: 600;
-        color: var(--btn-ink);
+        color: var(--ink);
         background: var(--btn);
         border: 2px solid var(--rim);
         border-radius: 12px;
-        padding: 10px 14px;
+        padding: 8px 11px;
+        white-space: nowrap;
         cursor: pointer;
       }
       button:disabled {
         opacity: 0.4;
         cursor: default;
       }
-      button:focus-visible {
-        outline: 3px solid var(--accent);
-        outline-offset: 2px;
-      }
-      .msg {
-        text-align: center;
-        min-height: 1.5em;
-        color: var(--muted);
-        margin: 4px 0 10px;
-      }
       .win {
         position: fixed;
         inset: 0;
         display: grid;
         place-items: center;
-        background: rgba(20, 16, 40, 0.6);
+        background: rgba(20, 16, 40, 0.35);
         z-index: 10;
       }
-      .win div {
-        background: var(--btn);
-        color: var(--btn-ink);
-        padding: 28px 32px;
+      .win[hidden] {
+        display: none;
+      }
+      .win button {
+        border: 0;
+        padding: 24px 30px;
         border-radius: 20px;
-        text-align: center;
+        font-weight: 400;
+        white-space: normal;
       }
       .win h2 {
         margin: 0 0 6px;
         font-size: 1.8rem;
       }
-      .version {
-        text-align: center;
-        color: var(--muted);
-        font-size: 0.8rem;
-        margin: 4px 0 0;
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .tube {
-          transition: none;
-        }
-        .tube.shake,
-        .stream,
-        .liquid {
-          animation: none !important;
-        }
+      .win p {
+        margin: 0;
       }
     </style>
   </head>
   <body>
-    <div id="app">
-      <header>
-        <h1>Niveau {{ level }} af {{ MAX_LEVEL }}</h1>
-        <span class="meta"
-          >Bane {{ solved + 1 }}<template v-if="level < MAX_LEVEL"> af {{ BOARDS_PER_LEVEL }}</template> · {{ moves }}
-          træk</span
-        >
-      </header>
+    <header>
+      <div class="top">
+        <h1 id="title">Niveau 1</h1>
+        <span class="meta" id="moves">0 træk</span>
+      </div>
       <div class="settings">
         <label
           >Niveau
-          <select v-model.number="level" @change="chooseLevel" :disabled="pending > 0">
-            <option v-for="n in MAX_LEVEL" :key="n" :value="n">{{ n }} ({{ colorsFor(n) }} farver)</option>
-          </select>
-        </label>
-        <button @click="toggleSound">{{ muted ? 'Slå lyd til' : 'Slå lyd fra' }}</button>
+          <select id="level"></select
+        ></label>
+        <button id="sound">Slå lyd fra</button>
       </div>
-
-      <div class="board" :style="boardLayout">
-        <div
-          v-for="(tube, i) in tubes"
-          :key="i"
-          :ref="el => { if (el) tubeEls[i] = el }"
-          class="tube"
-          tabindex="0"
-          role="button"
-          :aria-label="'Rør ' + (i+1)"
-          :class="{ selected: selected === i, shake: shaking === i,
-                   'hint-from': hint && hint[0] === i, 'hint-to': hint && hint[1] === i,
-                   done: isTubeDone(tube) }"
-          :style="tilts[i] || null"
-          @click="tap(i)"
-          @keydown.enter.space.prevent="tap(i)"
-        >
-          <transition-group
-            name="liq"
-            tag="div"
-            class="liquid"
-            :class="sloshes[i] && sloshes[i].cls"
-            :style="sloshes[i] ? { '--dir': sloshes[i].dir } : null"
-          >
-            <div v-for="(c, j) in tube" :key="j" class="seg" :style="{ background: PALETTE[c] }"></div>
-          </transition-group>
-        </div>
-        <div v-for="s in streams" :key="s.id" class="stream" :style="s.style"></div>
-      </div>
-
-      <p class="msg">{{ message }}</p>
-
+    </header>
+    <canvas id="scene"></canvas>
+    <div class="tubes" id="tubes" role="group" aria-label="Rør"></div>
+    <div class="bottom" id="bottom">
+      <p class="msg" id="msg" aria-live="polite">Træk i baggrunden for at dreje scenen.</p>
       <div class="bar">
-        <button @click="undo" :disabled="pending > 0 || !history.length">Fortryd</button>
-        <button @click="restart" :disabled="pending > 0">Start forfra</button>
-        <button @click="addTube" :disabled="extraTubeUsed">Ekstra rør</button>
-        <button @click="showHint">Tip</button>
-        <button @click="newGame" :disabled="pending > 0">Ny bane</button>
+        <button id="undo" disabled>Fortryd</button>
+        <button id="restart">Start forfra</button>
+        <button id="extra">Ekstra rør</button>
+        <button id="hint">Tip</button>
+        <button id="new">Ny bane</button>
       </div>
-
-      <p class="version" v-if="version">Version {{ version }}</p>
-
-      <div class="win" v-if="won" @click="nextBoard">
-        <div>
-          <h2>Løst!</h2>
-          <p v-if="levelUpNext">{{ moves }} træk. Tryk for at gå op på niveau {{ level + 1 }}.</p>
-          <p v-else>{{ moves }} træk. Tryk for næste bane.</p>
-        </div>
-      </div>
+      <p class="version" id="version"></p>
     </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
-    <script>
-      /* ---------- Spillogik (ren JS, uafhængig af Vue) ---------- */
+    <div class="win" id="win" hidden>
+      <button id="next">
+        <h2>Løst!</h2>
+        <p id="winText"></p>
+      </button>
+    </div>
+    <!-- onerror: three.js kunne ikke hentes (fx ingen forbindelse), så spillet kan ikke starte. -->
+    <script
+      type="module"
+      onerror="
+        document.getElementById('msg').textContent = 'Spillet kunne ikke hentes. Tjek forbindelsen, og prøv igen.'
+      "
+    >
+      /* ---------- Spillogik (ren JS, uafhængig af visningen) ---------- */
       const CAP = 4
       const PALETTE = [
         '#e3812f',
@@ -683,16 +493,16 @@
       })()
 
       /* ---------- Niveauer og gemt niveau ---------- */
-      // 9 niveauer med én farve mere pr. niveau: niveau 1 har 3 farver, niveau 9 har 11.
-      // Efter 3 løste baner på et niveau går man op på næste. På niveau 9 fortsætter man med
+      // 10 niveauer med én farve mere pr. niveau: niveau 1 har 3 farver, niveau 10 har alle 12.
+      // Efter 3 løste baner på et niveau går man op på næste. På niveau 10 fortsætter man med
       // nye baner, så længe man vil.
-      const MAX_LEVEL = 9
+      const MAX_LEVEL = 10
       const BOARDS_PER_LEVEL = 3
       const colorsFor = (level) => level + 2
-      // Højst 7 rør i bredden og 2 rækker, altså 14 rør. Niveau 9 har 11 farver og 2 tomme rør,
-      // så der er netop plads til et ekstra rør.
+      // Højst 7 rør i bredden og 3 rækker. Antallet af rækker vælges, så rørene bliver størst muligt
+      // på skærmen, se pickRows(). Niveau 10 har 12 farver og 2 tomme rør; med et ekstra rør er det 15 rør.
       const MAX_COLS = 7
-      const MAX_ROWS = 2
+      const MAX_ROWS = 3
       const STORAGE_KEY = 'vandsortering'
       // Kun niveauet gemmes. localStorage kan være utilgængelig (fx privat browsing), så fejl ignoreres.
       function loadLevel() {
@@ -708,287 +518,1147 @@
         } catch (e) {}
       }
 
-      /* ---------- Vue 3 ---------- */
-      const { createApp, ref, computed, watch } = Vue
-      const APP_VERSION = document.querySelector('meta[name="app-version"]').content
+      /* ---------- 3D med three.js ---------- */
+      import * as THREE from 'three'
+      import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 
       // Safari på iPhone ignorerer user-scalable=no, så knibe-zoom stoppes her.
       for (const type of ['gesturestart', 'gesturechange']) {
         document.addEventListener(type, (e) => e.preventDefault(), { passive: false })
       }
 
-      createApp({
-        setup() {
-          const level = ref(loadLevel())
-          watch(level, saveLevel)
-          // Løste baner på det nuværende niveau, siden spillet blev åbnet (gemmes ikke).
-          const solved = ref(0)
-          const levelUpNext = computed(() => level.value < MAX_LEVEL && solved.value + 1 >= BOARDS_PER_LEVEL)
-          // To lag af tilstand:
-          //  state: den logiske bane. Opdateres øjeblikkeligt, når et træk accepteres.
-          //  tubes: det, der vises. Animationerne flytter portionerne her, lidt efter lidt.
-          const state = ref([])
-          const tubes = ref([])
-          const initial = ref([])
-          const history = ref([]) // snapshots af state, ikke af det viste
-          const selected = ref(null)
-          const shaking = ref(null)
-          const hint = ref(null)
-          const moves = ref(0)
-          const message = ref('')
-          const extraTubeUsed = ref(false)
-          const pending = ref(0) // antal hældninger, der endnu ikke er animeret færdig
-          const tilts = ref({}) // rør-indeks -> inline-stil for vippede rør
-          const streams = ref([]) // aktive vandstråler
-          const sloshes = ref({}) // rør-indeks -> { cls, dir } for skvulp i røret, der modtager
-          const receiving = {} // rør-indeks -> antal hældninger, der lige nu løber ned i røret
-          let sloshId = 0
-          const muted = ref(false)
-          const tubeEls = []
-          // Kø pr. rør. At hælde UD kræver eneret over røret; at MODTAGE kan ske
-          // samtidig fra flere rør (de hælder altid samme farve, så rækkefølgen er ligegyldig).
-          //  last:     seneste animation hvor røret hældte ud
-          //  receives: modtagelser startet siden da
-          let queues = []
-          const newQueue = () => ({ last: Promise.resolve(), receives: [] })
-          const sides = {} // mål-rør -> hvilke sider (venstre/højre) der er optaget
-          let streamId = 0
+      const dark = matchMedia('(prefers-color-scheme: dark)').matches
+      const canvas = document.getElementById('scene')
+      let renderer
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+      } catch (e) {
+        document.getElementById('msg').textContent = 'Spillet kræver WebGL, som browseren ikke kan bruge her.'
+        throw e
+      }
+      renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1))
+      renderer.shadowMap.enabled = true
+      renderer.localClippingEnabled = true // væskelagene klippes af vandrette planer
+      renderer.shadowMap.type = THREE.PCFShadowMap
+      renderer.toneMapping = THREE.NeutralToneMapping // bevarer farverne bedre end ACES
+      renderer.toneMappingExposure = dark ? 1.05 : 1
 
-          const won = computed(() => pending.value === 0 && state.value.length > 0 && isSolved(state.value))
-          // Rørene fordeles jævnt over én eller to rækker med højst MAX_COLS i hver.
-          const boardLayout = computed(() => {
-            const n = Math.max(1, tubes.value.length)
-            const rows = Math.min(MAX_ROWS, Math.ceil(n / MAX_COLS))
-            return { '--cols': Math.ceil(n / rows), '--rows': rows }
+      const scene = new THREE.Scene()
+      const V3 = THREE.Vector3
+
+      // Baggrunden er den samme gradient som spillets CSS. Den tegnes i scenen, så glasset kan bryde den.
+      {
+        const c = document.createElement('canvas')
+        c.width = 4
+        c.height = 256
+        const g = c.getContext('2d')
+        const grad = g.createLinearGradient(0, 0, 0, 256)
+        grad.addColorStop(0, dark ? '#1d1934' : '#e6e9f2')
+        grad.addColorStop(1, dark ? '#3a1f3f' : '#cfd5e6')
+        g.fillStyle = grad
+        g.fillRect(0, 0, 4, 256)
+        const tex = new THREE.CanvasTexture(c)
+        tex.colorSpace = THREE.SRGBColorSpace
+        scene.background = tex
+        scene.backgroundIntensity = 1
+      }
+
+      // Omgivelser til spejlinger: three.js' indbyggede "rum" – ingen billedfiler.
+      const pmrem = new THREE.PMREMGenerator(renderer)
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+      scene.environmentIntensity = dark ? 0.45 : 0.9
+
+      // Mål (verdensenheder). Røret står med bunden i y = 0; mundingen er i y = H.
+      const R = 0.3 // indvendig radius
+      const T = 0.035 // glassets tykkelse
+      const H = 2.3 // indvendig højde
+      const U = (H - 0.25) / CAP // højde pr. portion væske
+      const SPX = 0.92 // afstand mellem rør
+      const ROW_GAP = H + 0.55 // højdeforskel mellem hylderne
+      const ROW_DEPTH = 1.5 // den bageste hylde står længere tilbage, som en trappe
+
+      /* --- Lys og skygger --- */
+      scene.add(new THREE.HemisphereLight(dark ? 0x8a80c0 : 0xffffff, dark ? 0x201a35 : 0xb8bdd0, dark ? 0.5 : 0.7))
+      const sun = new THREE.DirectionalLight(0xffffff, dark ? 1.6 : 2.0)
+      sun.position.set(-4, 12, -7)
+      sun.castShadow = true
+      sun.shadow.mapSize.set(1024, 1024)
+      sun.shadow.bias = -0.0005
+      sun.shadow.normalBias = 0.02
+      scene.add(sun, sun.target)
+
+      /* --- Materialer --- */
+      // Rigtigt glas: transmission bryder lyset, så væsken og baggrunden ses forvrænget gennem glasset.
+      const glass = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        metalness: 0,
+        roughness: 0.05,
+        transmission: 1,
+        thickness: 0.08,
+        ior: 1.5,
+        specularIntensity: 1,
+        envMapIntensity: dark ? 1.4 : 1.1,
+        side: THREE.DoubleSide,
+      })
+      const liquidMats = new Map()
+      function liquidMaterial(color) {
+        if (!liquidMats.has(color))
+          liquidMats.set(
+            color,
+            new THREE.MeshPhysicalMaterial({
+              color: PALETTE[color],
+              roughness: 0.3,
+              metalness: 0,
+              clearcoat: 0.35,
+              clearcoatRoughness: 0.2,
+              envMapIntensity: 0.35, // ellers spejler overfladen loftslyset og ser hvid ud
+              specularIntensity: 0.35, // dæmper solens glans på den flade overflade
+              emissive: PALETTE[color],
+              emissiveIntensity: 0.12,
+            }),
+          )
+        return liquidMats.get(color)
+      }
+      const shelfMat = new THREE.MeshStandardMaterial({ color: dark ? '#3a3363' : '#d4cfe4', roughness: 0.6 })
+      const corkMat = new THREE.MeshStandardMaterial({ color: '#b4875a', roughness: 0.9 })
+      // Ringe til Tip: gul om røret, der skal hældes fra, og lilla om røret, der skal hældes i.
+      const hintFromMat = new THREE.MeshBasicMaterial({ color: '#f2b134', toneMapped: false })
+      const hintToMat = new THREE.MeshBasicMaterial({ color: dark ? '#a48cff' : '#6b4fd8', toneMapped: false })
+
+      /* --- Former (drejet om y-aksen) --- */
+      const innerX = (y) => (y >= R ? R : Math.sqrt(Math.max(0, R * R - (R - y) * (R - y))))
+      const V2 = (x, y) => new THREE.Vector2(x, y)
+
+      // Glas med tykkelse: yderside op, kant, inderside ned.
+      const glassGeometry = (() => {
+        const pts = []
+        for (let i = 0; i <= 14; i++) {
+          const a = -Math.PI / 2 + (i / 14) * (Math.PI / 2)
+          pts.push(V2(Math.max(0.0001, (R + T) * Math.cos(a)), R + (R + T) * Math.sin(a)))
+        }
+        pts.push(V2(R + T, H), V2(R + T + 0.05, H + 0.02), V2(R + T + 0.05, H + 0.08), V2(R, H + 0.08), V2(R, R))
+        for (let i = 14; i >= 0; i--) {
+          const a = -Math.PI / 2 + (i / 14) * (Math.PI / 2)
+          pts.push(V2(Math.max(0.0001, R * Math.cos(a)), R + R * Math.sin(a)))
+        }
+        return new THREE.LatheGeometry(pts, 48)
+      })()
+
+      /* --- Væske med fysik: overfladen er altid vandret, uanset hvordan røret vender ---
+         Rørets indre er fyldt med faste prøvepunkter, og rumfang er en andel af punkterne. En væske med
+         rumfanget v har sin overflade i den verdenshøjde, hvor netop andelen v af punkterne ligger lavere.
+         Hvert farvelag tegnes som hele rørets indre, klippet mellem to vandrette planer i verden. */
+      const LR = (y) => Math.max(0.001, innerX(y) - 0.012) // væskens radius i højden y
+      const SAMPLES = (() => {
+        const pts = []
+        let seed = 12345 // egen tilfældighed, så spillets Math.random ikke påvirkes
+        const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+        while (pts.length < 4000 * 3) {
+          const x = (rnd() * 2 - 1) * R,
+            z = (rnd() * 2 - 1) * R,
+            y = rnd() * H
+          if (x * x + z * z <= LR(y) ** 2) pts.push(x, y, z)
+        }
+        return new Float32Array(pts)
+      })()
+      const NS = SAMPLES.length / 3
+      const sortedLocalY = Float32Array.from({ length: NS }, (_, k) => SAMPLES[k * 3 + 1]).sort()
+      // Rumfanget af portion nr. i i et oprejst rør (den nederste er mindre på grund af den runde bund).
+      const unitVol = Array.from({ length: CAP }, (_, i) => {
+        let c = 0
+        for (let k = 0; k < NS; k++) if (SAMPLES[k * 3 + 1] >= i * U && SAMPLES[k * 3 + 1] < (i + 1) * U) c++
+        return c / NS
+      })
+      const volOf = (from, to) => unitVol.slice(from, to).reduce((a, v) => a + v, 0)
+
+      // Rørets indre som ét lukket legeme. Klipningen bestemmer, hvor meget af det der vises.
+      const interiorGeometry = (() => {
+        const pts = []
+        for (let i = 0; i <= 16; i++) {
+          const y = R - R * Math.cos(((i / 16) * Math.PI) / 2)
+          pts.push(V2(LR(y), y))
+        }
+        pts.push(V2(LR(H), H), V2(0.001, H))
+        return new THREE.LatheGeometry(pts, 40)
+      })()
+
+      const corkGeometry = new THREE.CylinderGeometry(R + T + 0.03, R - 0.01, 0.32, 32)
+      const ringGeometry = new THREE.TorusGeometry(R + T + 0.07, 0.022, 10, 48).rotateX(Math.PI / 2)
+      const colliderGeometry = new THREE.CylinderGeometry(SPX * 0.47, SPX * 0.47, H + 0.6, 12)
+      const streamGeometry = new THREE.CylinderGeometry(0.035, 0.035, 1, 12).translate(0, -0.5, 0)
+
+      /* --- Animation: tweens og "tegn kun når noget bevæger sig" --- */
+      let needsRender = true
+      const invalidate = () => (needsRender = true)
+      const tweens = new Set()
+      const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)
+      const linear = (t) => t
+      function tween(ms, fn, e = ease) {
+        return new Promise((resolve) => tweens.add({ start: performance.now(), ms, fn, e, resolve }))
+      }
+      function runTweens(now) {
+        for (const tw of tweens) {
+          const t = Math.min(1, (now - tw.start) / tw.ms)
+          tw.fn(tw.e(t))
+          if (t === 1) {
+            tweens.delete(tw)
+            tw.resolve()
+          }
+        }
+      }
+      const lerp = (a, b, t) => a + (b - a) * t
+      // En blød rute gennem en række punkter: hjørnerne rundes med små buer (kvadratiske Bézier-kurver).
+      // Giver en funktion af k (0–1), der sætter positionen og fortæller, hvor langt man er nået:
+      // punktets nummer med decimaler, fx 1,5 midt mellem punkt 1 og 2.
+      function route(points) {
+        const pos = [points[0].clone()],
+          label = [0]
+        for (let i = 1; i < points.length - 1; i++) {
+          const p = points[i]
+          const la = p.distanceTo(points[i - 1]),
+            lb = p.distanceTo(points[i + 1])
+          const d = Math.min(0.35, la * 0.45, lb * 0.45)
+          if (d < 1e-4) {
+            pos.push(p.clone())
+            label.push(i)
+            continue
+          }
+          const p0 = p.clone().lerp(points[i - 1], d / la),
+            p1 = p.clone().lerp(points[i + 1], d / lb)
+          for (let j = 0; j <= 8; j++) {
+            const t = j / 8
+            pos.push(p0.clone().lerp(p, t).lerp(p.clone().lerp(p1, t), t))
+            label.push(t < 0.5 ? i - ((1 - 2 * t) * d) / la : i + ((2 * t - 1) * d) / lb)
+          }
+        }
+        pos.push(points[points.length - 1].clone())
+        label.push(points.length - 1)
+        const at = [0]
+        for (let i = 1; i < pos.length; i++) at.push(at[i - 1] + pos[i].distanceTo(pos[i - 1]))
+        const length = at[at.length - 1]
+        const go = (k, out) => {
+          const s = k * length
+          let i = 1
+          while (i < at.length - 1 && at[i] < s) i++
+          const f = at[i] > at[i - 1] ? (s - at[i - 1]) / (at[i] - at[i - 1]) : 1
+          out.lerpVectors(pos[i - 1], pos[i], f)
+          return lerp(label[i - 1], label[i], f)
+        }
+        go.len = length
+        return go
+      }
+      const easeOut = (t) => 1 - (1 - t) * (1 - t)
+
+      /* --- Partikler: én lille shader til bobler, plask og konfetti --- */
+      const particleMaterial = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        uniforms: { scale: { value: 1 } },
+        vertexShader: `
+          attribute float size; attribute float alpha; attribute vec3 tint;
+          varying float vAlpha; varying vec3 vTint;
+          uniform float scale;
+          void main() {
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            gl_PointSize = size * scale / -mv.z;
+            gl_Position = projectionMatrix * mv;
+            vAlpha = alpha; vTint = tint;
+          }`,
+        fragmentShader: `
+          varying float vAlpha; varying vec3 vTint;
+          void main() {
+            float d = length(gl_PointCoord - 0.5);
+            if (d > 0.5) discard;
+            gl_FragColor = vec4(vTint, vAlpha * smoothstep(0.5, 0.25, d));
+            #include <colorspace_fragment>
+          }`,
+      })
+      class Particles {
+        constructor(capacity) {
+          this.list = []
+          this.capacity = capacity
+          const g = new THREE.BufferGeometry()
+          for (const [name, n] of [
+            ['position', 3],
+            ['tint', 3],
+            ['size', 1],
+            ['alpha', 1],
+          ])
+            g.setAttribute(
+              name,
+              new THREE.BufferAttribute(new Float32Array(capacity * n), n).setUsage(THREE.DynamicDrawUsage),
+            )
+          this.points = new THREE.Points(g, particleMaterial)
+          this.points.frustumCulled = false
+          scene.add(this.points)
+        }
+        emit(p) {
+          if (this.list.length < this.capacity) this.list.push({ age: 0, gravity: 0, ...p })
+        }
+        get alive() {
+          return this.list.length > 0
+        }
+        update(dt) {
+          this.list = this.list.filter((p) => (p.age += dt) < p.life)
+          const g = this.points.geometry
+          const pos = g.attributes.position.array,
+            tint = g.attributes.tint.array,
+            size = g.attributes.size.array,
+            alpha = g.attributes.alpha.array
+          this.list.forEach((p, i) => {
+            p.vel.y += p.gravity * dt
+            p.pos.addScaledVector(p.vel, dt)
+            p.pos.toArray(pos, i * 3)
+            p.color.toArray(tint, i * 3)
+            size[i] = p.size
+            alpha[i] = p.alpha * (1 - p.age / p.life)
           })
-          watch(won, (w) => {
-            if (w) Sound.fanfare()
+          g.setDrawRange(0, this.list.length)
+          for (const k of ['position', 'tint', 'size', 'alpha']) g.attributes[k].needsUpdate = true
+        }
+      }
+      const particles = new Particles(1500)
+      const rand = (a, b) => a + Math.random() * (b - a)
+      const colorOf = (c) => new THREE.Color(PALETTE[c])
+
+      /* --- Scenen: hylder og rør --- */
+      let tubes3d = [] // { pivot, body, home, glassMesh, ring, collider, layers: [{ color, vol, ... }], cork }
+      let world = new THREE.Group()
+      scene.add(world)
+      let layout = { width: 1, rows: 1 }
+
+      // Et farvelag: forside med lys og glans, bagside i en flad, lidt lysere farve. Gennem snittet
+      // ser man bagsiden af den modsatte væg, og det ligner en vandret overflade.
+      function addLayer(t, color, vol) {
+        const lo = new THREE.Plane(new V3(0, 1, 0), 1e3),
+          hi = new THREE.Plane(new V3(0, -1, 0), 0)
+        const frontMat = liquidMaterial(color).clone()
+        frontMat.clippingPlanes = [lo, hi]
+        frontMat.clipShadows = true
+        const backMat = new THREE.MeshBasicMaterial({
+          color: new THREE.Color(PALETTE[color]).lerp(new THREE.Color(1, 1, 1), 0.12),
+          side: THREE.BackSide,
+          clippingPlanes: [lo, hi],
+        })
+        const front = new THREE.Mesh(interiorGeometry, frontMat)
+        front.castShadow = true
+        const back = new THREE.Mesh(interiorGeometry, backMat)
+        t.body.add(front, back)
+        const layer = { color, vol, front, back, lo, hi }
+        t.layers.push(layer)
+        return layer
+      }
+      function setLayers(t, contents) {
+        for (const l of t.layers) {
+          l.front.removeFromParent()
+          l.back.removeFromParent()
+          l.front.material.dispose()
+          l.back.material.dispose()
+        }
+        t.layers = []
+        contents.forEach((c, i) => {
+          const top = t.layers[t.layers.length - 1]
+          if (top && top.color === c) top.vol += unitVol[i]
+          else addLayer(t, c, unitVol[i])
+        })
+      }
+      const totalVol = (t) => t.layers.reduce((a, l) => a + l.vol, 0)
+
+      // Prøvepunkternes højde i verden, sorteret. Står røret lodret, genbruges den sorterede liste.
+      const worldY = new Float32Array(NS)
+      function heightsOf(t) {
+        t.pivot.updateMatrixWorld(true)
+        const e = t.body.matrixWorld.elements
+        if (Math.abs(e[1]) < 1e-6 && Math.abs(e[9]) < 1e-6) return (v) => sortedLocalY[idx(v)] + e[13]
+        for (let k = 0; k < NS; k++)
+          worldY[k] = e[1] * SAMPLES[k * 3] + e[5] * SAMPLES[k * 3 + 1] + e[9] * SAMPLES[k * 3 + 2] + e[13]
+        worldY.sort()
+        return (v) => worldY[idx(v)]
+      }
+      const idx = (v) => Math.min(NS - 1, Math.max(0, Math.round(v * NS)))
+
+      // Flyt klippeplanerne, så hvert lag ligger vandret oven på det forrige.
+      function updateLiquid(t) {
+        if (!t.layers.length) return
+        const at = heightsOf(t)
+        let cum = 0
+        for (const l of t.layers) {
+          l.front.visible = l.back.visible = l.vol > 0.0005
+          l.lo.constant = cum <= 0.0005 ? 1e3 : -at(cum)
+          cum += l.vol
+          l.hi.constant = at(cum)
+        }
+      }
+
+      // Hvor meget kan blive i røret, når det står, som det står nu? Alt under mundingens laveste punkt.
+      function keptNow(t, dir) {
+        t.pivot.updateMatrixWorld(true)
+        const lipY = t.pivot.localToWorld(new V3(dir * R, 0, 0)).y
+        const e = t.body.matrixWorld.elements
+        let c = 0
+        for (let k = 0; k < NS; k++)
+          if (e[1] * SAMPLES[k * 3] + e[5] * SAMPLES[k * 3 + 1] + e[9] * SAMPLES[k * 3 + 2] + e[13] < lipY) c++
+        return c / NS
+      }
+      // Den mindste vinkel, hvor der højst er rumfanget vol tilbage i røret (halvering).
+      function angleFor(t, dir, vol) {
+        const old = t.pivot.rotation.z
+        let lo = 0,
+          hi = 2.8
+        for (let i = 0; i < 22; i++) {
+          const m = (lo + hi) / 2
+          t.pivot.rotation.z = -dir * m
+          if (keptNow(t, dir) > vol) lo = m
+          else hi = m
+        }
+        t.pivot.rotation.z = old
+        t.pivot.updateMatrixWorld(true)
+        return hi
+      }
+
+      function buildTube(i, x, y, z, contents) {
+        // pivot sidder i mundingen, så røret kan vippes om mundingen, når det hælder.
+        const pivot = new THREE.Group()
+        pivot.position.set(x, y + H, z)
+        const body = new THREE.Group()
+        body.position.y = -H
+        pivot.add(body)
+        const glassMesh = new THREE.Mesh(glassGeometry, glass)
+        const ring = new THREE.Mesh(ringGeometry, hintFromMat)
+        ring.position.y = H + 0.05
+        ring.visible = false
+        const collider = new THREE.Mesh(colliderGeometry, new THREE.MeshBasicMaterial({ visible: false }))
+        collider.position.y = H / 2
+        collider.userData.tube = i
+        body.add(glassMesh, ring, collider)
+        world.add(pivot)
+        const t = {
+          pivot,
+          body,
+          home: pivot.position.clone(),
+          glassMesh,
+          ring,
+          collider,
+          layers: [],
+          cork: null,
+          jobs: 0,
+          lifts: 0,
+        }
+        setLayers(t, contents)
+        return t
+      }
+
+      function buildScene(ts) {
+        scene.remove(world)
+        world = new THREE.Group()
+        scene.add(world)
+        tubes3d = []
+        const n = ts.length
+        // Én knap pr. rør. Knapperne genbruges, så fokus bliver, når scenen bygges igen.
+        while (tubeButtons.children.length > n) tubeButtons.lastChild.remove()
+        while (tubeButtons.children.length < n) {
+          const i = tubeButtons.children.length
+          const b = document.createElement('button')
+          b.onclick = () => tap(i)
+          tubeButtons.append(b)
+        }
+        const rows = pickRows(n)
+        const perRow = Math.ceil(n / rows)
+        layout = { width: widthOf(perRow), rows }
+        // Rørene fordeles jævnt: de bageste rækker får et rør mere, når det ikke går op.
+        let i = 0
+        for (let r = 0; r < rows; r++) {
+          const inRow = Math.floor(n / rows) + (r < n % rows ? 1 : 0)
+          const y = (rows - 1 - r) * ROW_GAP
+          const z = (rows - 1 - r) * ROW_DEPTH
+          const shelf = new THREE.Mesh(new THREE.BoxGeometry((perRow - 1) * SPX + 1.3, 0.14, 1.3), shelfMat)
+          shelf.position.set(0, y - 0.07, z + 0.15)
+          shelf.receiveShadow = true
+          world.add(shelf)
+          for (let k = 0; k < inRow; k++, i++) {
+            // Kameraet ser mod +z, så +x er til venstre på skærmen: første rør længst til venstre,
+            // og de tomme rør (de sidste) længst til højre.
+            const x = ((inRow - 1) / 2 - k) * SPX
+            const t = buildTube(i, x, y, z, ts[i])
+            tubes3d.push(t)
+            if (isTubeDone(ts[i])) addCork(t, true)
+          }
+        }
+        // Skyggekameraet dækker netop hylderne.
+        const sc = sun.shadow.camera
+        sc.left = -layout.width / 2 - 1
+        sc.right = layout.width / 2 + 1
+        sc.top = rows * ROW_GAP + 2
+        sc.bottom = -3
+        sc.near = 1
+        sc.far = 30
+        sc.updateProjectionMatrix()
+        sun.target.position.set(0, 0, 0)
+        fitCamera()
+        invalidate()
+      }
+
+      /* --- Kamera: kan drejes lidt med fingeren, glider tilbage af sig selv --- */
+      // Smalt synsfelt (tele) på lang afstand: alle rækker ses fra næsten samme vinkel.
+      // Med vidvinkel tæt på blev den forreste række set ovenfra og den bageste fra siden.
+      const camera = new THREE.PerspectiveCamera(15, 1, 0.5, 200)
+      const view = { az: 0, el: 0.2, radius: 10, target: new V3() } // az/el i radianer omkring target
+      const AZ_LIMIT = 0.55,
+        EL0 = 0.2,
+        EL_MIN = -0.12,
+        EL_MAX = 0.55
+
+      function placeCamera() {
+        const { az, el, radius, target } = view
+        camera.position.set(
+          target.x + radius * Math.sin(az) * Math.cos(el),
+          target.y + radius * Math.sin(el),
+          target.z - radius * Math.cos(az) * Math.cos(el),
+        )
+        camera.lookAt(target)
+        placeTubeButtons()
+      }
+
+      // Knapperne til tastatur og skærmlæser lægges oven på rørenes pladser på skærmen.
+      const tubeButtons = document.getElementById('tubes')
+      const seen = new V3()
+      function placeTubeButtons() {
+        camera.updateMatrixWorld()
+        const at = (x, y, z) => {
+          seen.set(x, y, z).project(camera)
+          return { x: ((seen.x + 1) / 2) * innerWidth, y: ((1 - seen.y) / 2) * innerHeight }
+        }
+        tubes3d.forEach((t, i) => {
+          const b = tubeButtons.children[i]
+          if (!b) return
+          const top = at(t.home.x, t.home.y + 0.1, t.home.z),
+            bottom = at(t.home.x, t.home.y - H, t.home.z),
+            side = at(t.home.x + R + T + 0.05, t.home.y, t.home.z)
+          const half = Math.abs(side.x - top.x)
+          b.style.left = `${Math.min(top.x, bottom.x) - half}px`
+          b.style.top = `${top.y}px`
+          b.style.width = `${Math.abs(top.x - bottom.x) + 2 * half}px`
+          b.style.height = `${bottom.y - top.y}px`
+        })
+      }
+
+      // Scenens mål i verdensenheder, set fra kameraet. De bageste rækker ses højere oppe, så et punkts
+      // højde på skærmen er y·cos + z·sin af kameraets hældning. Over den øverste række er der plads til
+      // et rør, der hælder; nederst går scenen til forkanten af den forreste hylde.
+      const widthOf = (perRow) => (perRow - 1) * SPX + 2 * (R + 0.4)
+      const seenY = (y, z) => y * Math.cos(EL0) + z * Math.sin(EL0)
+      function extent(rows) {
+        const hi = seenY((rows - 1) * ROW_GAP + H + 1.2, (rows - 1) * ROW_DEPTH)
+        const lo = seenY(-0.14, -0.5) - 0.1
+        return { height: hi - lo, mid: (hi + lo) / 2 }
+      }
+      // Pladsen mellem overskriften og knapperne. Siden kan ikke scrolle; scenen skaleres, så den passer her.
+      function space() {
+        const top = document.querySelector('header').getBoundingClientRect().bottom
+        const bottom = document.getElementById('bottom').getBoundingClientRect().top
+        return { top, bottom, width: innerWidth, height: Math.max(100, bottom - top) }
+      }
+      // Det antal rækker, der giver de største rør på skærmen. En ekstra række skal give mindst 5 % større rør.
+      function pickRows(n) {
+        const sp = space()
+        let best = 1,
+          bestScale = 0
+        for (let rows = 1; rows <= Math.min(MAX_ROWS, n); rows++) {
+          const perRow = Math.ceil(n / rows)
+          if (perRow > MAX_COLS) continue
+          const scale = Math.min(sp.width / widthOf(perRow), sp.height / extent(rows).height)
+          if (scale > bestScale * 1.05) {
+            best = rows
+            bestScale = scale
+          }
+        }
+        return best
+      }
+
+      function fitCamera() {
+        const w = innerWidth,
+          h = innerHeight
+        renderer.setSize(w, h, false)
+        camera.aspect = w / h
+        // Scenen centreres i pladsen mellem overskriften og knapperne med en view offset.
+        const sp = space()
+        camera.setViewOffset(w, h, 0, h / 2 - (sp.top + sp.bottom) / 2, w, h)
+        const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))
+        const frac = sp.height / h
+        const { height, mid } = extent(layout.rows)
+        // 3 % luft: perspektivet gør det nærmeste lidt større end beregnet.
+        view.radius = Math.max(height / 2 / (tan * frac), layout.width / 2 / (tan * camera.aspect)) * 1.03
+        // Sigt, så scenens midte på skærmen ligger midt i pladsen.
+        const z = ((layout.rows - 1) * ROW_DEPTH) / 2
+        view.target.set(0, (mid - z * Math.sin(EL0)) / Math.cos(EL0), z)
+        camera.updateProjectionMatrix()
+        particleMaterial.uniforms.scale.value = (h * renderer.getPixelRatio() * 0.27) / tan
+        placeCamera()
+        invalidate()
+      }
+      // Når skærmen vendes eller ændrer størrelse, kan et andet antal rækker passe bedre.
+      window.addEventListener('resize', () => {
+        if (pending === 0 && tubes3d.length && pickRows(tubes3d.length) !== layout.rows) {
+          selected = null
+          buildScene(shown)
+        } else fitCamera()
+      })
+
+      /* --- Tryk og træk --- */
+      const raycaster = new THREE.Raycaster()
+      let drag = null
+      canvas.addEventListener('pointerdown', (e) => {
+        drag = { x: e.clientX, y: e.clientY, az: view.az, el: view.el, moved: false }
+        canvas.setPointerCapture(e.pointerId)
+      })
+      canvas.addEventListener('pointermove', (e) => {
+        if (!drag) return
+        const dx = e.clientX - drag.x,
+          dy = e.clientY - drag.y
+        if (Math.hypot(dx, dy) > 10) drag.moved = true
+        if (!drag.moved) return
+        view.az = THREE.MathUtils.clamp(drag.az - dx * 0.004, -AZ_LIMIT, AZ_LIMIT)
+        view.el = THREE.MathUtils.clamp(drag.el + dy * 0.004, EL_MIN, EL_MAX)
+        placeCamera()
+        invalidate()
+      })
+      canvas.addEventListener('pointerup', (e) => {
+        const d = drag
+        drag = null
+        if (!d || d.moved) return
+        const p = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1)
+        raycaster.setFromCamera(p, camera)
+        const hit = raycaster.intersectObjects(
+          tubes3d.map((t) => t.collider),
+          false,
+        )[0]
+        if (hit) tap(hit.object.userData.tube)
+      })
+
+      /* --- Effekter --- */
+      function bubbles(t, color, ms) {
+        // Luftbobler, der stiger op gennem væsken i målrøret, mens der hældes.
+        const end = performance.now() + ms
+        const tint = colorOf(color).lerp(new THREE.Color(1, 1, 1), 0.6)
+        const emitter = (dt) => {
+          if (performance.now() > end) return false
+          const level = Math.max(0.3, sortedLocalY[idx(totalVol(t))] - 0.1)
+          for (let k = 0; k < dt * 120; k++) {
+            const a = Math.random() * Math.PI * 2,
+              r = Math.random() * R * 0.6
+            particles.emit({
+              pos: t.body.localToWorld(new V3(Math.cos(a) * r, rand(0.15, level), Math.sin(a) * r)),
+              vel: new V3(0, rand(0.3, 0.8), 0),
+              life: rand(0.2, 0.5),
+              size: rand(0.03, 0.07),
+              color: tint,
+              alpha: 0.8,
+            })
+          }
+          return true
+        }
+        emitters.add(emitter)
+      }
+      function splashAt(getPos, color, ms) {
+        const end = performance.now() + ms
+        const c = colorOf(color)
+        emitters.add((dt) => {
+          if (performance.now() > end) return false
+          for (let k = 0; k < dt * 90; k++)
+            particles.emit({
+              pos: getPos().clone(),
+              vel: new V3(rand(-0.6, 0.6), rand(1.2, 2.2), rand(-0.6, 0.6)),
+              gravity: -12,
+              life: rand(0.12, 0.25),
+              size: rand(0.04, 0.08),
+              color: c,
+              alpha: 1,
+            })
+          return true
+        })
+      }
+      function confetti() {
+        for (let k = 0; k < 400; k++)
+          particles.emit({
+            pos: new V3(
+              rand(-layout.width / 2, layout.width / 2),
+              view.target.y + ROW_GAP * layout.rows * 0.5,
+              rand(-1, 1),
+            ),
+            vel: new V3(rand(-1, 1), rand(2, 4), rand(-0.5, 0.5)),
+            gravity: -5,
+            life: rand(2, 3),
+            size: rand(0.08, 0.16),
+            color: colorOf(Math.floor(Math.random() * Math.min(PALETTE.length, colorsFor(level)))),
+            alpha: 1,
           })
+      }
+      const emitters = new Set()
 
-          function load(ts) {
-            state.value = clone(ts)
-            tubes.value = clone(ts)
-            queues = ts.map(newQueue)
-            history.value = []
-            selected.value = null
-            hint.value = null
-            moves.value = 0
-            message.value = ''
-            extraTubeUsed.value = false
-          }
-          function newGame() {
-            initial.value = generate(colorsFor(level.value))
-            load(initial.value)
-          }
-          function restart() {
-            load(initial.value)
-          }
-          function nextBoard() {
-            if (levelUpNext.value) {
-              level.value++
-              solved.value = 0
-            } else solved.value++
-            newGame()
-          }
-          function chooseLevel() {
-            solved.value = 0
-            newGame()
-          }
+      function addCork(t, instant) {
+        const cork = new THREE.Mesh(corkGeometry, corkMat)
+        cork.castShadow = true
+        t.body.add(cork)
+        t.cork = cork
+        const rest = H + 0.06
+        if (instant) {
+          cork.position.y = rest
+          return Promise.resolve()
+        }
+        cork.position.y = rest + 1.4
+        // Proppen falder ned og hopper lidt.
+        const bounce = (x) => {
+          const n = 7.5625,
+            d = 2.75
+          if (x < 1 / d) return n * x * x
+          if (x < 2 / d) return n * (x -= 1.5 / d) * x + 0.75
+          if (x < 2.5 / d) return n * (x -= 2.25 / d) * x + 0.9375
+          return n * (x -= 2.625 / d) * x + 0.984375
+        }
+        return tween(650, (k) => (cork.position.y = lerp(rest + 1.4, rest, k)), bounce)
+      }
 
-          function tap(i) {
-            hint.value = null
-            message.value = ''
-            if (selected.value === null) {
-              if (state.value[i].length) {
-                selected.value = i
-                Sound.clink()
-              }
-              return
+      /* --- Tegneløkken: tegner kun, når noget bevæger sig (sparer strøm) --- */
+      let last = performance.now()
+      let frames = 0 // antal tegnede billeder (til at se, at den står stille, når intet sker)
+      function loop() {
+        requestAnimationFrame(loop)
+        const now = performance.now()
+        const dt = Math.min(0.05, (now - last) / 1000)
+        last = now
+        let moving = tweens.size > 0 || particles.alive || emitters.size > 0
+        runTweens(now)
+        for (const e of emitters) if (!e(dt)) emitters.delete(e)
+        particles.update(dt)
+        // Kameraet glider tilbage, når man slipper.
+        if (!drag && (Math.abs(view.az) > 0.0005 || Math.abs(view.el - EL0) > 0.0005)) {
+          view.az *= 0.92
+          view.el = EL0 + (view.el - EL0) * 0.92
+          placeCamera()
+          moving = true
+        }
+        if (!moving && !needsRender) return
+        needsRender = false
+        for (const t of tubes3d) updateLiquid(t)
+        renderer.render(scene, camera)
+        frames++
+      }
+
+      /* ---------- Spillet ---------- */
+      const ui = {
+        title: document.getElementById('title'),
+        moves: document.getElementById('moves'),
+        msg: document.getElementById('msg'),
+        undo: document.getElementById('undo'),
+        restart: document.getElementById('restart'),
+        extra: document.getElementById('extra'),
+        newGame: document.getElementById('new'),
+        level: document.getElementById('level'),
+        win: document.getElementById('win'),
+        next: document.getElementById('next'),
+        winText: document.getElementById('winText'),
+      }
+      let level = loadLevel()
+      // Løste baner på det nuværende niveau, siden spillet blev åbnet (gemmes ikke).
+      let solved = 0
+      // To lag af tilstand:
+      //  state: den logiske bane. Opdateres øjeblikkeligt, når et træk accepteres.
+      //  shown: det, der vises. Animationerne flytter portionerne her, når de er hældt.
+      let state = [],
+        shown = [],
+        initial = [],
+        history = [],
+        moves = 0,
+        selected = null,
+        extraTubeUsed = false,
+        pending = 0, // antal hældninger, der endnu ikke er animeret færdig
+        muted = false
+      // Kø pr. rør. At hælde UD kræver eneret over røret. Et rør kan MODTAGE fra ét rør ad gangen:
+      // det næste går i gang, så snart strålen fra det forrige er stoppet.
+      //  out:    seneste animation, hvor røret hældte ud
+      //  ins:    modtagelser startet siden da
+      //  poured: opfyldes, når strålen fra den seneste modtagelse er stoppet
+      let queues = []
+      const newQueue = () => ({ out: Promise.resolve(), ins: [], poured: Promise.resolve() })
+      const UNIT_MS = 260
+      const LANE = 0.85 // så langt foran rækken flyttes et rør sidelæns, fri af de andre rør
+      const YAW = 0.96 // det hældende rør peger skråt ud mod kameraet (55°), ikke hen over naborørene
+      const POUR_LIFT = 0.95 // mundingens højde over målrøret, mens der hældes
+
+      const COLOR_NAMES = [
+        'orange',
+        'lyserød',
+        'blå',
+        'olivengrøn',
+        'lilla',
+        'mørkegrøn',
+        'vinrød',
+        'gul',
+        'lyseblå',
+        'grå',
+        'lysegrøn',
+        'mørkeblå',
+      ]
+      // Det, en skærmlæser læser op for et rør: indholdet fra toppen, og om røret er valgt.
+      function describeTubes() {
+        state.forEach((t, i) => {
+          const b = tubeButtons.children[i]
+          if (!b) return
+          const colors = t
+            .slice()
+            .reverse()
+            .map((c) => COLOR_NAMES[c])
+            .join(', ')
+          const what = !t.length ? 'tomt' : isTubeDone(t) ? `færdigt, ${COLOR_NAMES[t[0]]}` : `fra toppen: ${colors}`
+          b.setAttribute('aria-label', `Rør ${i + 1}, ${what}`)
+          b.setAttribute('aria-pressed', selected === i)
+        })
+      }
+      const levelUpNext = () => level < MAX_LEVEL && solved + 1 >= BOARDS_PER_LEVEL
+      function showWin() {
+        ui.winText.textContent = levelUpNext()
+          ? `${moves} træk. Tryk for at gå op på niveau ${level + 1}.`
+          : `${moves} træk. Tryk for næste bane.`
+        ui.win.hidden = false
+        ui.next.focus()
+      }
+
+      function render() {
+        describeTubes()
+        ui.title.textContent = `Niveau ${level} af ${MAX_LEVEL}`
+        const board = `Bane ${solved + 1}` + (level < MAX_LEVEL ? ` af ${BOARDS_PER_LEVEL}` : '')
+        ui.moves.textContent = `${board} · ${moves} træk`
+        ui.level.value = level
+        ui.undo.disabled = pending > 0 || !history.length
+        ui.restart.disabled = ui.newGame.disabled = ui.level.disabled = pending > 0
+        // Et ekstra rør flytter de andre rør, så det kan først tilføjes, når alle hældninger er færdige.
+        ui.extra.disabled = extraTubeUsed || pending > 0
+      }
+      function load(ts) {
+        state = clone(ts)
+        shown = clone(ts)
+        queues = ts.map(newQueue)
+        history = []
+        moves = 0
+        selected = null
+        extraTubeUsed = false
+        buildScene(state)
+        render()
+      }
+      // Ét ekstra tomt rør pr. bane.
+      function addTube() {
+        if (extraTubeUsed || pending > 0) return
+        history.push(clone(state))
+        state.push([])
+        shown.push([])
+        queues.push(newQueue())
+        extraTubeUsed = true
+        selected = null
+        buildScene(shown)
+        render()
+      }
+      function newGame() {
+        initial = generate(colorsFor(level))
+        load(initial)
+      }
+      // Ringe om de to rør, et tip peger på: [fra, til]. Et valgt rør vises kun ved, at det er løftet.
+      function mark(pair) {
+        tubes3d.forEach((t) => (t.ring.visible = false))
+        if (pair)
+          pair.forEach((k, j) => {
+            tubes3d[k].ring.material = j ? hintToMat : hintFromMat
+            tubes3d[k].ring.visible = true
+          })
+        invalidate()
+      }
+
+      // Et rør, der er på vej ud at hælde (eller venter på at komme til), styres af hældningen.
+      async function lift(i, up) {
+        const t = tubes3d[i]
+        if (t.jobs) return
+        // Et nyt løft eller en hældning afbryder løftet (lifts tæller op), så røret ikke løftes bagefter.
+        const id = ++t.lifts
+        const from = t.pivot.position.y
+        const to = t.home.y + (up ? 0.45 : 0)
+        await tween(160, (k) => t.lifts === id && (t.pivot.position.y = lerp(from, to, k)))
+      }
+      async function shake(i) {
+        const t = tubes3d[i]
+        if (t.jobs) return
+        await tween(320, (k) => t.jobs || (t.pivot.rotation.z = Math.sin(k * Math.PI * 4) * 0.06 * (1 - k)), linear)
+      }
+
+      // Flyt røret ad en rute, og vip det undervejs: fra lodret til vinklen `tilt` på stykket mellem
+      // rutens punkt nr. `a` og `b`.
+      function travel(t, points, dir, tilt, a, b) {
+        const go = route(points)
+        const ms = Math.min(950, 300 + 130 * go.len)
+        return tween(ms, (k) => {
+          const at = go(k, t.pivot.position)
+          t.pivot.rotation.z = -dir * tilt * ease(THREE.MathUtils.clamp((at - a) / (b - a), 0, 1))
+        })
+      }
+
+      const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches
+
+      // onPoured kaldes, når strålen er stoppet, og målrøret kan modtage fra det næste rør.
+      async function animatePour(a, b, n, color, onPoured) {
+        const src = tubes3d[a],
+          dst = tubes3d[b]
+        if (reducedMotion()) {
+          // Reduceret bevægelse: røret flyver ikke hen og hælder; portionerne flyttes bare.
+          Sound.pour(n * 60, shown[b].length / CAP, Math.min(1, (shown[b].length + n) / CAP))
+          await sleep(n * 60)
+          for (let k = 0; k < n; k++) shown[b].push(shown[a].pop())
+          setLayers(src, shown[a])
+          setLayers(dst, shown[b])
+          src.pivot.position.copy(src.home)
+          if (isTubeDone(shown[b])) {
+            Sound.chime()
+            addCork(dst, true)
+          }
+          onPoured()
+          invalidate()
+          return
+        }
+        // Kroppen af det vippede rør peger ind mod midten, så det ikke ryger ud over kanten af skærmen ...
+        const dir = dst.home.x < -0.01 ? -1 : 1
+        // ... og skråt ud mod kameraet, så den ikke ligger hen over naborørene. Så længe røret står
+        // lodret, kan drejningen ikke ses.
+        src.pivot.rotation.y = -dir * YAW
+        const srcLen = shown[a].length
+        const dstLen = shown[b].length
+        const total = totalVol(src)
+        const pourVol = volOf(srcLen - n, srcLen)
+        // Vinklen, hvor væsken når mundingen, og vinklen, hvor netop pourVol er løbet ud.
+        const t0 = angleFor(src, dir, total - 0.002)
+        const t1 = angleFor(src, dir, Math.max(0.0004, total - pourVol))
+        // Placér røret, så mundingens laveste punkt står over målet midt i hældningen.
+        const tm = (t0 + t1) / 2
+        const reach = R * Math.cos(tm) + 0.04
+        const pose = dst.home.clone().add(new V3(-dir * Math.cos(YAW) * reach, POUR_LIFT, -Math.sin(YAW) * reach))
+        // 1. Ruten: træk røret frem foran sin egen række, flyt det hen foran målet og skub det ind over
+        //    mundingen. Røret vippes foran rækken, til væsken netop når mundingen, så det aldrig svinger
+        //    gennem naborørene. Overfladen forbliver vandret hele tiden.
+        const start = src.pivot.position.clone()
+        const laneS = src.home.z - LANE,
+          laneD = dst.home.z - LANE
+        const out = new V3(start.x, Math.max(start.y, src.home.y + 0.45), laneS)
+        let points
+        if (laneS === laneD) points = [start, out, new V3(pose.x, pose.y, laneD), pose]
+        else if (laneS > laneD) {
+          // Fra en række længere tilbage: frem over rørene foran, og først ned foran målets række.
+          // Er der en række imellem, holdes højden hele vejen frem, så røret går fri af den.
+          const next = laneS - laneD < ROW_DEPTH + 0.01
+          const over = next ? Math.min(out.y, Math.max(pose.y, dst.home.y + H + 0.25)) : out.y
+          points = [start, out, new V3(pose.x, over, laneD), new V3(pose.x, pose.y, laneD), pose]
+        } else {
+          // Fra en række længere fremme: op foran sin egen række og så ind over rørene imellem.
+          points = [start, out, new V3(pose.x, pose.y, laneS), pose]
+        }
+        const last = points.length - 1
+        await travel(src, points, dir, t0, last - 2, last - 1.1)
+        // 2. Hæld: vip videre, og det, der kommer over mundingen, løber ud i en stråle.
+        const topLayer = src.layers[src.layers.length - 1]
+        const topStart = topLayer.vol
+        const top = dst.layers[dst.layers.length - 1]
+        const dstLayer = top && top.color === color ? top : addLayer(dst, color, 0)
+        const dstStart = dstLayer.vol
+        const dstAdd = volOf(dstLen, dstLen + n)
+        const stream = new THREE.Mesh(streamGeometry, liquidMaterial(color))
+        stream.scale.y = 0.001
+        world.add(stream)
+        const ms = n * UNIT_MS * 1.3
+        Sound.pour(ms, dstLen / CAP, Math.min(1, (dstLen + n) / CAP))
+        bubbles(dst, color, ms)
+        const splashPos = new V3()
+        splashAt(() => splashPos, color, ms)
+        const lip = new V3()
+        await tween(
+          ms,
+          (k) => {
+            src.pivot.rotation.z = -dir * (t0 + (t1 - t0) * k)
+            const poured = Math.min(pourVol, Math.max(0, total - keptNow(src, dir)))
+            topLayer.vol = topStart - poured
+            dstLayer.vol = dstStart + dstAdd * (poured / pourVol)
+            // Strålen fra mundingens laveste punkt ned til overfladen i målet.
+            src.pivot.localToWorld(lip.set(dir * R, 0, 0))
+            const surface = heightsOf(dst)(totalVol(dst))
+            stream.position.copy(lip)
+            stream.scale.y = Math.max(0.001, lip.y - surface)
+            splashPos.set(lip.x, surface, lip.z)
+          },
+          ease,
+        )
+        const len = stream.scale.y
+        await tween(90, (k) => (stream.scale.y = Math.max(0.001, len * (1 - k))), linear)
+        stream.removeFromParent()
+        // Portionerne er flyttet: lagene bygges præcist ud fra det viste.
+        for (let k = 0; k < n; k++) shown[b].push(shown[a].pop())
+        setLayers(src, shown[a])
+        setLayers(dst, shown[b])
+        if (isTubeDone(shown[b])) {
+          Sound.chime()
+          addCork(dst, false)
+        }
+        onPoured()
+        // 3. Samme rute tilbage. Røret rejses op foran rækken, og væsken lægger sig vandret undervejs.
+        const back = points.reverse()
+        back[0] = src.pivot.position.clone()
+        back[last] = src.home
+        await travel(src, back, dir, t1, 2, 1.1)
+        src.pivot.rotation.set(0, 0, 0)
+        invalidate()
+      }
+
+      function tap(i) {
+        ui.msg.textContent = ''
+        mark(null)
+        if (selected === null) {
+          if (!state[i].length || isTubeDone(state[i])) return
+          selected = i
+          Sound.clink()
+          lift(i, true)
+          return describeTubes()
+        }
+        const from = selected
+        selected = null
+        describeTubes()
+        if (from === i) return lift(i, false)
+        if (!canPour(state, from, i)) {
+          Sound.thud()
+          lift(from, false)
+          shake(i)
+          return
+        }
+        // Trækket valideres og udføres på den logiske tilstand med det samme ...
+        history.push(clone(state))
+        const color = peek(state[from])
+        const n = pour(state, from, i)
+        moves++
+        pending++
+        // ... og animationen sættes i kø:
+        //  kilden venter på alt, hvad den selv er involveret i (eneret),
+        //  målet venter på sin seneste udhældning og på, at strålen fra den forrige modtagelse er stoppet.
+        const src = tubes3d[from]
+        src.jobs++
+        src.lifts++
+        const A = queues[from],
+          B = queues[i]
+        let onPoured
+        const poured = new Promise((r) => (onPoured = r))
+        const job = Promise.all([A.out, ...A.ins, B.out, B.poured])
+          .then(() => animatePour(from, i, n, color, onPoured))
+          .finally(() => {
+            onPoured()
+            pending--
+            src.jobs--
+            if (selected === from) lift(from, true)
+            render()
+            if (pending === 0 && isSolved(state)) {
+              Sound.fanfare()
+              if (reducedMotion()) return showWin()
+              confetti()
+              setTimeout(showWin, 900)
             }
-            const from = selected.value
-            selected.value = null
-            if (from === i) return
-            if (!canPour(state.value, from, i)) {
-              Sound.thud()
-              if (!tilts.value[i]) {
-                shaking.value = i
-                setTimeout(() => (shaking.value = null), 300)
-              }
-              return
-            }
-            // Trækket valideres og udføres på den logiske tilstand med det samme ...
-            history.value.push(clone(state.value))
-            const color = peek(state.value[from])
-            const n = pour(state.value, from, i)
-            const finalLen = state.value[i].length
-            moves.value++
-            pending.value++
-            // ... og animationen sættes i kø:
-            //  kilden venter på alt, hvad den selv er involveret i (eneret),
-            //  målet venter kun på sin seneste udhældning, så flere kan hælde i samtidig.
-            //  Højst to ad gangen (én fra hver side), så den tredje venter på den næstsidste.
-            const A = queues[from],
-              B = queues[i]
-            const waits = [A.last, ...A.receives, B.last]
-            if (B.receives.length >= 2) waits.push(B.receives[B.receives.length - 2])
-            const job = Promise.all(waits)
-              .then(() => animatePour(from, i, n, color, finalLen))
-              .finally(() => {
-                pending.value--
-              })
-            A.last = job
-            A.receives = []
-            B.receives.push(job)
-          }
+          })
+        A.out = job
+        A.ins = []
+        B.ins.push(job)
+        B.poured = poured
+        render()
+      }
 
-          async function animatePour(from, to, n, color, finalLen) {
-            const ts = tubes.value
-            const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
-            const unit = reduce ? 60 : 200
-            document.documentElement.style.setProperty('--unit-ms', unit + 'ms')
-            const S = tubeEls[from],
-              T = tubeEls[to]
-            const move = 'transform .35s ease-in-out'
-            let sid = null,
-              dir = 0
+      document.getElementById('undo').onclick = () => {
+        if (pending > 0 || !history.length) return
+        // Et brugt ekstra rør kan fortrydes, men ikke tilføjes igen.
+        const h = history,
+          m = moves,
+          used = extraTubeUsed
+        load(h.pop())
+        history = h
+        moves = Math.max(0, m - 1)
+        extraTubeUsed = used
+        render()
+      }
+      ui.extra.onclick = addTube
+      ui.restart.onclick = () => pending === 0 && load(initial)
+      ui.newGame.onclick = () => pending === 0 && newGame()
+      for (let n = 1; n <= MAX_LEVEL; n++) ui.level.add(new Option(`${n} (${colorsFor(n)} farver)`, n))
+      // Man begynder forfra på det valgte niveau.
+      ui.level.onchange = () => {
+        level = +ui.level.value
+        solved = 0
+        saveLevel(level)
+        newGame()
+      }
+      document.getElementById('sound').onclick = (e) => {
+        muted = !muted
+        Sound.setMuted(muted)
+        e.target.textContent = muted ? 'Slå lyd til' : 'Slå lyd fra'
+      }
+      document.getElementById('hint').onclick = () => {
+        const r = solve(state)
+        mark(r && r.length ? r[0] : null)
+        if (r && r.length)
+          ui.msg.textContent = `Hæld fra rør ${r[0][0] + 1} (gul ring) til rør ${r[0][1] + 1} (lilla ring).`
+        else if (r === false)
+          ui.msg.textContent = 'Banen kan ikke løses herfra. Fortryd et par træk eller brug ekstra rør.'
+        else ui.msg.textContent = 'Fandt ikke en løsning hurtigt nok. Prøv igen efter et par træk.'
+      }
+      ui.win.onclick = () => {
+        ui.win.hidden = true
+        // Op på næste niveau efter BOARDS_PER_LEVEL løste baner.
+        if (levelUpNext()) {
+          level++
+          solved = 0
+          saveLevel(level)
+        } else solved++
+        newGame()
+      }
 
-            if (!reduce) {
-              const w = S.offsetWidth
-              const sx = S.offsetLeft + w / 2,
-                sy = S.offsetTop
-              const tx = T.offsetLeft + T.offsetWidth / 2,
-                ty = T.offsetTop
-              dir = tx >= sx ? 1 : -1
-              const used = sides[to] || (sides[to] = new Set())
-              if (used.has(dir)) dir = -dir // hæld fra den anden side
-              used.add(dir)
-              const deg = 50 + (CAP - ts[from].length) * 9
-              const rad = (deg * Math.PI) / 180
-              const lipX = dir * (w / 2) * Math.cos(rad),
-                lipY = (w / 2) * Math.sin(rad)
-              const pourY = ty - 34
-              const lipTarget = tx - dir * 6 // to stråler side om side
-              const ox = lipTarget - lipX,
-                oy = pourY - lipY
-              tilts.value[from] = {
-                transform: `translate(${ox - sx}px, ${oy - sy}px) rotate(${dir * deg}deg)`,
-                transition: move,
-                zIndex: 5,
-              }
-              await sleep(360)
-
-              const segH = (T.offsetHeight - 21) / CAP
-              const endY = ty + 18 + (CAP - finalLen) * segH
-              sid = ++streamId
-              streams.value.push({
-                id: sid,
-                style: {
-                  left: tx - dir * 6 - 3 + 'px',
-                  top: pourY + 'px',
-                  height: Math.max(0, endY - pourY) + 'px',
-                  background: PALETTE[color],
-                },
-              })
-            }
-
-            Sound.pour(n * unit, ts[to].length / CAP, Math.min(1, (ts[to].length + n) / CAP))
-            receiving[to] = (receiving[to] || 0) + 1
-            if (!reduce) sloshes.value[to] = { cls: 'slosh-pour', dir: dir || 1 }
-            for (let k = 0; k < n; k++) {
-              ts[to].push(ts[from].pop())
-              await sleep(unit)
-            }
-            if (sid !== null) streams.value = streams.value.filter((s) => s.id !== sid)
-            if (--receiving[to] === 0 && !reduce) settle(to, dir || 1)
-            if (isTubeDone(ts[to])) Sound.chime()
-
-            if (!reduce) {
-              tilts.value[from] = { transform: '', transition: move, zIndex: 5 }
-              await sleep(360)
-              sides[to].delete(dir)
-            }
-            delete tilts.value[from]
-          }
-
-          // Når strålen stopper, skvulper væsken et par gange og falder til ro.
-          function settle(i, dir) {
-            const id = ++sloshId
-            sloshes.value[i] = { cls: 'slosh-settle', dir: -dir, id }
-            setTimeout(() => {
-              if (sloshes.value[i] && sloshes.value[i].id === id) delete sloshes.value[i]
-            }, 900)
-          }
-
-          function undo() {
-            if (pending.value > 0 || !history.value.length) return
-            state.value = history.value.pop()
-            tubes.value = clone(state.value)
-            queues = state.value.map(newQueue)
-            moves.value = Math.max(0, moves.value - 1)
-            selected.value = null
-            hint.value = null
-          }
-          function addTube() {
-            if (extraTubeUsed.value) return
-            history.value.push(clone(state.value))
-            state.value.push([])
-            tubes.value.push([])
-            queues.push(newQueue())
-            extraTubeUsed.value = true
-          }
-          function showHint() {
-            const r = solve(state.value)
-            if (r && r.length) {
-              hint.value = r[0]
-              message.value = 'Hæld fra det første markerede rør til det andet.'
-            } else if (r === false)
-              message.value = 'Banen kan ikke løses herfra. Fortryd et par træk eller brug ekstra rør.'
-            else message.value = 'Fandt ikke en løsning hurtigt nok. Prøv igen efter et par træk.'
-          }
-          function toggleSound() {
-            muted.value = !muted.value
-            Sound.setMuted(muted.value)
-          }
-
-          newGame()
-          return {
-            PALETTE,
-            MAX_LEVEL,
-            BOARDS_PER_LEVEL,
-            colorsFor,
-            level,
-            solved,
-            levelUpNext,
-            boardLayout,
-            tubes,
-            history,
-            selected,
-            shaking,
-            hint,
-            moves,
-            message,
-            extraTubeUsed,
-            won,
-            pending,
-            tilts,
-            streams,
-            sloshes,
-            muted,
-            tubeEls,
-            isTubeDone,
-            tap,
-            undo,
-            restart,
-            addTube,
-            showHint,
-            newGame,
-            nextBoard,
-            chooseLevel,
-            toggleSound,
-            version: APP_VERSION,
-          }
+      // Kun til afprøvning udefra (fx automatiske tests): læs tilstanden og find rørene på skærmen.
+      window.game = {
+        get state() {
+          return state
         },
-      }).mount('#app')
+        get busy() {
+          return pending > 0
+        },
+        get moves() {
+          return moves
+        },
+        get frames() {
+          return frames
+        },
+        get tubes() {
+          return tubes3d
+        },
+        solve: (limit) => solve(state, limit),
+        solved: () => isSolved(state),
+        badMove() {
+          for (let a = 0; a < state.length; a++)
+            for (let c = 0; c < state.length; c++)
+              if (a !== c && state[a].length && !isTubeDone(state[a]) && !canPour(state, a, c) && state[c].length < CAP)
+                return [a, c]
+          return null
+        },
+        screen(i) {
+          const p = tubes3d[i].collider.getWorldPosition(new V3()).project(camera)
+          return { x: ((p.x + 1) / 2) * innerWidth, y: ((1 - p.y) / 2) * innerHeight }
+        },
+      }
+
+      // Versionen skrives ind af scripts/build.mjs. Åbnes index.html direkte, er den tom.
+      const APP_VERSION = document.querySelector('meta[name="app-version"]').content
+      if (APP_VERSION) document.getElementById('version').textContent = `Version ${APP_VERSION}`
+
+      // Service workeren gemmer spillets filer, så det kan spilles uden forbindelse (se sw.js).
+      // Den kan ikke bruges, når index.html åbnes direkte som fil; så springes den bare over.
+      if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {})
+
+      newGame()
+      loop()
     </script>
   </body>
 </html>

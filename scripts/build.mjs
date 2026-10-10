@@ -16,7 +16,7 @@ const root = fileURLToPath(new URL('..', import.meta.url))
 const dist = `${root}dist/`
 
 // Alt, der skal med på webserveren, ud over index.html.
-const FILES = ['.htaccess', 'manifest.webmanifest', 'icons']
+const FILES = ['.htaccess', 'manifest.webmanifest', 'sw.js', 'icons']
 
 function git(args) {
   try {
