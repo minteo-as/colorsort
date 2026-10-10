@@ -4,6 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <title>Vandsortering 3D – prototype</title>
+    <!-- Statuslinjen (og browserens værktøjslinje) får samme farve som toppen af siden (--bg). -->
+    <meta name="theme-color" content="#e6e9f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1d1934" media="(prefers-color-scheme: dark)" />
     <!--
       Prototype: spillet i 3D med three.js. Ikke en del af det udgivne spil (kommer ikke med i dist/).
       Spillogikken, banegeneratoren, løseren og lyden er kopieret uændret fra index.html; kun visningen er ny.
@@ -36,6 +39,12 @@
         height: 100%;
         margin: 0;
         overflow: hidden;
+      }
+      /* Safari på iPhone farver statuslinjen og værktøjslinjen med sidens baggrundsfarve. En gradient
+         giver ingen farve at bruge, så de blev hvide. Derfor har <html> en ensfarvet baggrund i
+         gradientens topfarve, som i index.html. */
+      html {
+        background: var(--bg);
       }
       body {
         background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
