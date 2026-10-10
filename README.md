@@ -96,7 +96,9 @@ Tags, der pushes fra kommandolinjen, laver ikke en release.
 - Glasset bryder lyset (`MeshPhysicalMaterial` med `transmission`), og spejlingerne kommer fra three.js' indbyggede `RoomEnvironment` – ingen billedfiler.
 - Væsken følger fysikken: overfladen er altid vandret, røret vippes, til væsken når mundingen, og vinklen regnes ud fra rumfanget, så netop det øverste farvelag løber ud. Rumfang måles med faste prøvepunkter i rørets indre, og hvert farvelag tegnes som rørets indre klippet mellem to vandrette planer.
 - Scenen tegnes kun, når noget bevæger sig, så den ikke bruger strøm, når man tænker.
-- Smalt synsfelt på lang afstand, så begge rækker ses fra næsten samme vinkel.
+- Smalt synsfelt på lang afstand, så alle rækker ses fra næsten samme vinkel.
+- Et rør, der skal hælde, trækkes frem foran sin række, flyttes hen foran målet og hælder skråt forfra, så det aldrig går gennem de andre rør. Flere rør kan hælde samtidig; hælder to i samme rør, venter det andet, til strålen fra det første er stoppet.
+- Afviger fra spillet: op til 3 rækker (antallet vælges, så rørene bliver størst muligt på skærmen; siden kan ikke scrolle) og 10 niveauer, så niveau 10 bruger alle 12 farver.
 - Pakket og minificeret fylder prototypen med three.js ca. 146 KB komprimeret (Vue, som spillet bruger, ca. 53 KB).
 
-Kendte begrænsninger: kun én hældning ad gangen, intet "Ekstra rør", og rørene kan ikke vælges med tastaturet.
+Kendte begrænsninger: rørene kan ikke vælges med tastaturet eller læses af en skærmlæser.
