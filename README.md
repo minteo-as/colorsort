@@ -22,7 +22,7 @@ Den eneste afhængighed er Prettier. Spillet selv har intet build-step.
 Spillet ligger i `index.html`, og `sw.js` gør, at det kan spilles uden forbindelse.
 
 - **Spillogik** (ren JavaScript, uafhængig af visningen): `canPour`, `pour`, `isSolved`.
-- **Solver**: dybde-først-søgning med besøgte tilstande. Bruges til at sikre, at nye baner kan løses, og til Tip-knappen.
+- **Løsere**: to søgninger med besøgte tilstande. Dybde-først (`solve`) er hurtigst og bruges til at sikre, at nye baner kan løses. Tip-knappen bruger vægtet A\* (`solveShort`), som finder en kort løsning: den går altid videre fra den stilling, hvor træk indtil nu plus 1,5 × et skøn over træk tilbage er mindst. Skønnet er antal farvestykker minus antal farver, og fordi det aldrig er for højt, er løsningen højst 1,5 gange så lang som den korteste – i praksis den korteste eller et par træk længere.
 - **To lag af tilstand**: `state` er den logiske bane og opdateres med det samme; `shown` er det, der vises, og indhentes af animationerne.
 - **Animationskø pr. rør**: at hælde ud kræver eneret over røret. Flere rør kan hælde samtidig; hælder to i samme rør, venter det andet, til strålen fra det første er stoppet.
 - **Glas**: `MeshPhysicalMaterial` med `transmission` bryder lyset, og spejlingerne kommer fra three.js' indbyggede `RoomEnvironment` – ingen billedfiler.
