@@ -299,39 +299,49 @@
       const isTubeDone = (t) => t.length === CAP && t.every((c) => c === t[0])
       const isSolved = (ts) => ts.every((t) => t.length === 0 || isTubeDone(t))
 
+      // Rørene er indbyrdes ombyttelige, så en bane og dens rør i en anden rækkefølge er samme tilstand.
+      const boardKey = (ts) =>
+        ts
+          .map((t) => t.join(','))
+          .sort()
+          .join('|')
+      // De træk, der er værd at prøve fra en bane. Tomme rør er ens, så kun ét af dem prøves, og et rør
+      // med kun én farve flyttes ikke over i et tomt (det er det samme bagefter). Træk, hvor hele det
+      // øverste farvestykke kan være i målet, står for sig: et delvist træk (fx 3 gule over i et rør med
+      // plads til 2) kan hældes lige tilbage igen og fører sjældent nogen vegne.
+      function movesFrom(ts) {
+        const whole = [],
+          partial = []
+        for (let a = 0; a < ts.length; a++) {
+          const s = ts[a]
+          if (!s.length || isTubeDone(s)) continue
+          let triedEmpty = false
+          for (let b = 0; b < ts.length; b++) {
+            if (!canPour(ts, a, b)) continue
+            if (!ts[b].length) {
+              if (triedEmpty || topRun(s) === s.length) continue
+              triedEmpty = true
+            }
+            ;(topRun(s) <= CAP - ts[b].length ? whole : partial).push([a, b])
+          }
+        }
+        return { whole, partial }
+      }
+
+      // Dybde-først: finder hurtigt en løsning, men ikke nødvendigvis en kort. Bruges til at sikre, at
+      // nye baner kan løses. Svarer med trækkene, false (kan ikke løses) eller null (søgte for længe).
       function solve(start, limit = 200000) {
         const seen = new Set()
         const path = []
         let nodes = 0
-        const key = (ts) =>
-          ts
-            .map((t) => t.join(','))
-            .sort()
-            .join('|')
         function dfs(ts) {
           if (isSolved(ts)) return true
           if (++nodes > limit) return null
-          const k = key(ts)
+          const k = boardKey(ts)
           if (seen.has(k)) return false
           seen.add(k)
-          // Træk, hvor hele det øverste farvestykke kan være i målet, prøves først. Et delvist træk
-          // (fx 3 gule over i et rør med plads til 2) kan hældes lige tilbage igen og fører sjældent
-          // nogen vegne, så løsningerne bliver kortere, når de kun bruges som sidste udvej.
-          const whole = [],
-            partial = []
-          for (let a = 0; a < ts.length; a++) {
-            const s = ts[a]
-            if (!s.length || isTubeDone(s)) continue
-            let triedEmpty = false
-            for (let b = 0; b < ts.length; b++) {
-              if (!canPour(ts, a, b)) continue
-              if (!ts[b].length) {
-                if (triedEmpty || topRun(s) === s.length) continue
-                triedEmpty = true
-              }
-              ;(topRun(s) <= CAP - ts[b].length ? whole : partial).push([a, b])
-            }
-          }
+          // Hele træk prøves først; delvise træk kun som sidste udvej.
+          const { whole, partial } = movesFrom(ts)
           for (const [a, b] of whole.concat(partial)) {
             const next = ts.map((t) => t.slice())
             pour(next, a, b)
@@ -345,6 +355,84 @@
         }
         const r = dfs(start.map((t) => t.slice()))
         return r ? path.slice() : r
+      }
+
+      // Vægtet A*: finder en kort løsning. Bruges af Tip.
+      // For hver bane kendes g (træk indtil nu) og skønnes h (træk, der mindst er tilbage), og søgningen
+      // går altid videre fra banen med mindst g + W·h. Skønnet er antal farvestykker minus antal farver:
+      // et træk kan højst fjerne ét farvestykke, og en løst bane har ét pr. farve, så skønnet er aldrig
+      // for højt. Med W = 1 er løsningen derfor den korteste, men det tager op til sekunder med mange
+      // farver. Med W = 1,5 er den højst 1,5 gange så lang – i praksis den korteste eller et par træk
+      // længere – og findes på få millisekunder. Et delvist træk koster en anelse mere end et helt, så et
+      // helt træk vælges, når de er lige gode. Svarer som solve().
+      function solveShort(start, limit = 200000, W = 1.5) {
+        const colors = new Set(start.flat()).size
+        const estimate = (ts) => {
+          let runs = 0
+          for (const t of ts) for (let i = 0; i < t.length; i++) if (i === 0 || t[i] !== t[i - 1]) runs++
+          return runs - colors
+        }
+        // Prioritetskø (binær hob) efter f = g + W·h; ved lige f først den, der skønnes nærmest målet.
+        const heap = []
+        const before = (x, y) => x.f < y.f || (x.f === y.f && x.h < y.h)
+        function push(n) {
+          heap.push(n)
+          for (let i = heap.length - 1; i > 0;) {
+            const p = (i - 1) >> 1
+            if (!before(heap[i], heap[p])) break
+            ;[heap[i], heap[p]] = [heap[p], heap[i]]
+            i = p
+          }
+        }
+        function pop() {
+          const top = heap[0],
+            last = heap.pop()
+          if (heap.length) {
+            heap[0] = last
+            for (let i = 0; ;) {
+              const l = 2 * i + 1,
+                r = l + 1
+              let m = i
+              if (l < heap.length && before(heap[l], heap[m])) m = l
+              if (r < heap.length && before(heap[r], heap[m])) m = r
+              if (m === i) break
+              ;[heap[i], heap[m]] = [heap[m], heap[i]]
+              i = m
+            }
+          }
+          return top
+        }
+        const first = clone(start)
+        const h0 = estimate(first)
+        push({ ts: first, g: 0, h: h0, f: W * h0, parent: null, move: null })
+        const best = new Map([[boardKey(first), 0]]) // laveste g, en bane er nået med
+        let nodes = 0
+        while (heap.length) {
+          const n = pop()
+          if (n.g > best.get(boardKey(n.ts))) continue // nået billigere siden
+          if (isSolved(n.ts)) {
+            const path = []
+            for (let m = n; m.parent; m = m.parent) path.push(m.move)
+            return path.reverse()
+          }
+          if (++nodes > limit) return null
+          const { whole, partial } = movesFrom(n.ts)
+          for (const [moves, cost] of [
+            [whole, 1],
+            [partial, 1.001],
+          ])
+            for (const [a, b] of moves) {
+              const ts = clone(n.ts)
+              pour(ts, a, b)
+              const k = boardKey(ts),
+                g = n.g + cost
+              if (best.has(k) && best.get(k) <= g) continue
+              best.set(k, g)
+              const h = estimate(ts)
+              push({ ts, g, h, f: g + W * h, parent: n, move: [a, b] })
+            }
+        }
+        return false
       }
       function shuffle(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
@@ -368,13 +456,14 @@
       const clone = (ts) => ts.map((t) => t.slice())
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-      // Tip følger én plan. Løseren finder en løsning, og så længe spilleren følger tippene, kommer
+      // Tip følger én plan. Løseren finder en kort løsning (solveShort), og så længe spilleren følger tippene, kommer
       // næste tip fra samme plan. Blev der søgt forfra efter hvert træk, kunne to tip pege frem og
       // tilbage mellem de samme to rør. En plan er { state, path }: path er løserens svar for state.
       const sameBoard = (x, y) => x.length === y.length && x.every((t, i) => t.join() === y[i].join())
       function planFor(plan, ts) {
         if (plan && sameBoard(plan.state, ts)) return plan
-        return { state: clone(ts), path: solve(ts) }
+        const path = solveShort(ts)
+        return { state: clone(ts), path: path === null ? solve(ts) : path }
       }
       // Er trækket a → b fra banen ts planens næste trin? Så er resten af planen svaret på næste tip.
       function planRest(plan, ts, a, b) {
